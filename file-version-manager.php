@@ -57,3 +57,10 @@ register_deactivation_hook(__FILE__, [Deactivate::class, 'deactivate']);
 // 	$file_list_table = new FileListTable( new FileManager( $GLOBALS['wpdb'] ) );
 // 	$file_list_table->process_bulk_action();
 // } );
+
+// Add this new code
+add_filter('plugin_action_links_' . plugin_basename(__FILE__), function ($links) {
+	$settings_link = '<a href="' . admin_url('admin.php?page=fvm_settings') . '">' . __('Settings', 'file-version-manager') . '</a>';
+	array_unshift($links, $settings_link);
+	return $links;
+});
