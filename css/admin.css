@@ -7,7 +7,7 @@
 }
 
 .column-version {
-    width: 6%;
+    width: 7%;
 }
 
 .column-shortcode {
@@ -28,8 +28,8 @@
 }
 
 .alternate,
-.striped > tbody > :nth-child(odd),
-ul.striped > :nth-child(odd) {
+.striped>tbody> :nth-child(odd),
+ul.striped> :nth-child(odd) {
     background-color: #f6f7f7;
 }
 
@@ -67,4 +67,51 @@ ul.striped > :nth-child(odd) {
     color: black;
     text-decoration: none;
     cursor: pointer;
+}
+
+.fvm-dropzone {
+    position: relative;
+    top: auto;
+    right: auto;
+    left: auto;
+    bottom: auto;
+    margin: 20px 0;
+    border: 4px dashed #c3c4c7;
+    padding: 0;
+    text-align: center;
+}
+
+.fvm-dropzone.highlight {
+    border-color: #2271b1;
+    background-color: #f0f6fc;
+}
+
+h2.fvm-upload-instructions {
+    font-size: 20px;
+    line-height: 1.4;
+    font-weight: 400;
+    margin: 0;
+}
+
+.fvm-dropzone p {
+    font-size: 13px;
+    line-height: 1.5;
+    margin: .5em 0;
+}
+
+#fvm-file-name {
+    word-break: break-all;
+    margin-bottom: 10px;
+}
+
+#fvm-upload-button {
+    margin-top: 10px;
+}
+
+.post-upload-ui {
+    margin-bottom: 2em;
+}
+
+.upload-ui {
+    margin: 2em 0;
 }

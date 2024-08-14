@@ -1,33 +1,37 @@
 <?php
 namespace LVAI\FileVersionManager;
 
-class AdminPage {
+class AdminPage
+{
 	private $file_manager;
 	private $wp_list_table;
 	private $file_list_table;
 
-	public function __construct( FileManager $file_manager ) {
+	public function __construct(FileManager $file_manager)
+	{
 		$this->file_manager = $file_manager;
 	}
 
-	public function init() {
-		add_action( 'admin_menu', [ $this, 'add_admin_menu' ] );
-		add_action( 'admin_init', [ $this, 'handle_file_upload' ] );
-		add_action( 'admin_init', [ $this, 'handle_file_deletion' ] );
-		add_action( 'admin_init', [ $this, 'handle_bulk_actions' ] );
-		add_action( 'admin_init', [ $this, 'handle_file_update' ] );
-		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_styles' ] );
-		add_action( 'load-toplevel_page_file-version-manager', [ $this, 'setup_list_table' ] );
+	public function init()
+	{
+		add_action('admin_menu', [$this, 'add_admin_menu']);
+		add_action('admin_init', [$this, 'handle_file_upload']);
+		add_action('admin_init', [$this, 'handle_file_deletion']);
+		add_action('admin_init', [$this, 'handle_bulk_actions']);
+		add_action('admin_init', [$this, 'handle_file_update']);
+		add_action('admin_enqueue_scripts', [$this, 'enqueue_styles']);
+		add_action('load-toplevel_page_file-version-manager', [$this, 'setup_list_table']);
 		// add_filter( 'set-screen-option', [ $this, 'set_screen_option' ], 10, 3 );
 	}
 
-	public function add_admin_menu() {
+	public function add_admin_menu()
+	{
 		add_menu_page(
 			'File Version Manager',
 			'Files',
 			'manage_options',
 			'file-version-manager',
-			array( $this, 'display_admin_page' ),
+			array($this, 'display_admin_page'),
 			'dashicons-media-default',
 			11
 		);
@@ -38,7 +42,7 @@ class AdminPage {
 			'All Files',
 			'manage_options',
 			'file-version-manager',
-			array( $this, 'display_admin_page' )
+			array($this, 'display_admin_page')
 		);
 	}
 
@@ -65,24 +69,26 @@ class AdminPage {
 	// 	return $columns;
 	// }
 
-	public function setup_list_table() {
-		$this->wp_list_table = new FileListTable( $this->file_manager );
-		add_screen_option( 'per_page', [ 
+	public function setup_list_table()
+	{
+		$this->wp_list_table = new FileListTable($this->file_manager);
+		add_screen_option('per_page', [
 			'label' => 'Files per page',
 			'default' => 20,
 			'option' => 'fvm_files_per_page',
-		] );
+		]);
 	}
 
 	/**
 	 * Enqueue scripts and styles for the admin page
 	 * @return void
 	 */
-	public function enqueue_styles() {
-		if ( function_exists( 'get_current_screen' ) ) {
+	public function enqueue_styles()
+	{
+		if (function_exists('get_current_screen')) {
 			$screen = get_current_screen();
-			if ( $screen && $screen->id === 'toplevel_page_file-version-manager' ) {
-				wp_enqueue_style( 'file-version-manager-styles', plugin_dir_url( dirname( __FILE__ ) ) . 'css/admin.css' );
+			if ($screen && $screen->id === 'toplevel_page_file-version-manager') {
+				wp_enqueue_style('file-version-manager-styles', plugin_dir_url(dirname(__FILE__)) . 'css/admin.css');
 			}
 		}
 	}
@@ -91,7 +97,8 @@ class AdminPage {
 	 * Display admin page
 	 * @return void
 	 */
-	public function display_admin_page() {
+	public function display_admin_page()
+	{
 		ob_start();
 
 		$this->handle_file_upload();
@@ -103,21 +110,46 @@ class AdminPage {
 		<div class="wrap">
 			<h1>File Version Manager</h1>
 			<?php
-			if ( isset( $_GET['update'] ) && isset( $_GET['message'] ) ) {
+			if (isset($_GET['update']) && isset($_GET['message'])) {
 				$status = $_GET['update'] === 'success' ? 'updated' : 'error';
-				$message = urldecode( $_GET['message'] );
+				$message = urldecode($_GET['message']);
 				echo "<div class='notice $status is-dismissible'><p>$message</p></div>";
 			}
 			?>
+			<!-- 
+			<div id="fvm-upload-container" class="fvm-upload-container">
+				<form method="post" enctype="multipart/form-data" id="fvm-upload-form">
+					<?php // wp_nonce_field('fvm_file_upload', 'fvm_file_upload_nonce'); ?>
+					<div class="fvm-dropzone">
+						<p id="fvm-dropzone-text">Drag & drop files here or click to select</p>
+						<p id="fvm-file-name" style="display: none;"></p>
+						<input type="file" name="file" id="fvm-file-input" style="display: none;" required>
+						<button type="button" id="fvm-select-file" class="button">Select File</button>
+						<input type="submit" name="fvm_upload_file" id="fvm-upload-button" value="Upload File"
+							class="button button-primary" style="display: none;">
+					</div>
+				</form>
+			</div> -->
 
-			<div style="padding: 16px; background: white; border: 1px solid #c3c4c7;">
-				<h2 style="margin-top: 0;">Upload New File</h2>
-				<form method="post" enctype="multipart/form-data">
-					<?php wp_nonce_field( 'fvm_file_upload', 'fvm_file_upload_nonce' ); ?>
-					<input type="file" name="file" required>
-					<br>
-					<input type="submit" name="fvm_upload_file" value="Upload File" class="button button-primary"
-						style="margin-top: 20px;">
+			<div id="fvm-upload-container" class="fvm-upload-container">
+				<form method="post" enctype="multipart/form-data" id="fvm-upload-form">
+					<?php wp_nonce_field('fvm_file_upload', 'fvm_file_upload_nonce'); ?>
+					<div class="fvm-dropzone">
+						<div class="upload-ui">
+							<h2 class="fvm-upload-instructions">Drop files to upload</h2>
+							<p class="fvm-upload-instructions">or</p>
+							<p id="fvm-file-name" style="display: none;"></p>
+							<input type="file" name="file" id="fvm-file-input" style="display: none;" required>
+							<button type="button" id="fvm-select-file" class="browser button button-hero">Select File</button>
+							<input type="submit" name="fvm_upload_file" id="fvm-upload-button" value="Upload File"
+								class="button button-primary button-hero" style="display: none;">
+						</div>
+						<div class="post-upload-ui" id="post-upload-info">
+							<p class="fvm-upload-instructions">
+								Maximum upload file size: <?php echo size_format(wp_max_upload_size()); ?>.
+							</p>
+						</div>
+					</div>
 				</form>
 			</div>
 
@@ -129,20 +161,95 @@ class AdminPage {
 
 			<form method="post">
 				<?php
-				wp_nonce_field( 'bulk-files' );
+				wp_nonce_field('bulk-files');
 				$this->wp_list_table->prepare_items();
 				$this->wp_list_table->display_bulk_action_result();
-				$this->wp_list_table->search_box( 'Search', 'search' );
+				$this->wp_list_table->search_box('Search', 'search');
 				$this->wp_list_table->display();
 				?>
 			</form>
 
 			<?php
 			// Add modals for each file
-			foreach ( $this->wp_list_table->items as $item ) {
-				echo $this->wp_list_table->get_edit_form_html( $item['id'], $item );
+			foreach ($this->wp_list_table->items as $item) {
+				echo $this->wp_list_table->get_edit_form_html($item['id'], $item);
 			}
 			?>
+
+			<script>
+				document.addEventListener('DOMContentLoaded', function () {
+					const dropzone = document.querySelector('.fvm-dropzone');
+					const fileInput = document.getElementById('fvm-file-input');
+					const selectFileBtn = document.getElementById('fvm-select-file');
+					const uploadForm = document.getElementById('fvm-upload-form');
+					const uploadButton = document.getElementById('fvm-upload-button');
+					const fileNameDisplay = document.getElementById('fvm-file-name');
+					const uploadInstructions = document.querySelectorAll('.fvm-upload-instructions');
+					const postUploadInfo = document.getElementById('post-upload-info');
+
+					// Drag and drop functionality
+					['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+						dropzone.addEventListener(eventName, preventDefaults, false);
+					});
+
+					function preventDefaults(e) {
+						e.preventDefault();
+						e.stopPropagation();
+					}
+
+					['dragenter', 'dragover'].forEach(eventName => {
+						dropzone.addEventListener(eventName, highlight, false);
+					});
+
+					['dragleave', 'drop'].forEach(eventName => {
+						dropzone.addEventListener(eventName, unhighlight, false);
+					});
+
+					function highlight() {
+						dropzone.classList.add('highlight');
+					}
+
+					function unhighlight() {
+						dropzone.classList.remove('highlight');
+					}
+
+					dropzone.addEventListener('drop', handleDrop, false);
+
+					function handleDrop(e) {
+						const dt = e.dataTransfer;
+						const files = dt.files;
+						handleFiles(files);
+					}
+
+					// Select file button functionality
+					selectFileBtn.addEventListener('click', () => {
+						fileInput.click();
+					});
+
+					fileInput.addEventListener('change', () => {
+						handleFiles(fileInput.files);
+					});
+
+					function handleFiles(files) {
+						if (files.length > 0) {
+							const fileName = files[0].name;
+							fileNameDisplay.textContent = fileName;
+							fileNameDisplay.style.display = 'block';
+							selectFileBtn.style.display = 'none';
+							if (uploadButton) {
+								uploadButton.style.display = 'inline-block';
+							}
+							// Hide upload instructions and post-upload info
+							uploadInstructions.forEach(el => el.style.display = 'none');
+							if (postUploadInfo) {
+								postUploadInfo.style.display = 'none';
+							}
+						}
+					}
+
+					// ... rest of your JavaScript ...
+				});
+			</script>
 
 			<script type="text/javascript">
 				document.addEventListener('DOMContentLoaded', function () {
@@ -210,8 +317,9 @@ class AdminPage {
 	 * @param string $file_type
 	 * @return string
 	 */
-	private function get_file_icon_class( $file_type ) {
-		$icon_map = [ 
+	private function get_file_icon_class($file_type)
+	{
+		$icon_map = [
 			'image' => 'dashicons-format-image',
 			'audio' => 'dashicons-format-audio',
 			'video' => 'dashicons-format-video',
@@ -224,13 +332,13 @@ class AdminPage {
 			'application/zip' => 'dashicons-media-archive',
 		];
 
-		$type_parts = explode( '/', $file_type );
+		$type_parts = explode('/', $file_type);
 		$general_type = $type_parts[0];
 
-		if ( isset( $icon_map[ $file_type ] ) ) {
-			return $icon_map[ $file_type ];
-		} elseif ( isset( $icon_map[ $general_type ] ) ) {
-			return $icon_map[ $general_type ];
+		if (isset($icon_map[$file_type])) {
+			return $icon_map[$file_type];
+		} elseif (isset($icon_map[$general_type])) {
+			return $icon_map[$general_type];
 		} else {
 			return 'dashicons-media-default';
 		}
@@ -241,16 +349,17 @@ class AdminPage {
 	 * 
 	 * @return void
 	 */
-	public function handle_file_upload() {
-		if ( isset( $_POST['fvm_upload_file'] ) && isset( $_FILES['file'] ) ) {
-			check_admin_referer( 'fvm_file_upload', 'fvm_file_upload_nonce' );
+	public function handle_file_upload()
+	{
+		if (isset($_POST['fvm_upload_file']) && isset($_FILES['file'])) {
+			check_admin_referer('fvm_file_upload', 'fvm_file_upload_nonce');
 
-			$upload_result = $this->file_manager->upload_file( $_FILES['file'] );
+			$upload_result = $this->file_manager->upload_file($_FILES['file']);
 
-			if ( $upload_result ) {
-				$this->redirect_with_message( 'success', 'File uploaded successfully.' );
+			if ($upload_result) {
+				$this->redirect_with_message('success', 'File uploaded successfully.');
 			} else {
-				$this->redirect_with_message( 'error', 'Error uploading file.' );
+				$this->redirect_with_message('error', 'Error uploading file.');
 			}
 		}
 	}
@@ -260,32 +369,33 @@ class AdminPage {
 	 * 
 	 * @return void
 	 */
-	public function handle_file_deletion() {
-		if ( isset( $_GET['action'] ) && $_GET['action'] === 'delete' && isset( $_GET['file_id'] ) ) {
-			error_log( 'Entering handle_file_deletion method' );
+	public function handle_file_deletion()
+	{
+		if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['file_id'])) {
+			error_log('Entering handle_file_deletion method');
 
-			if ( isset( $_GET['action'] ) && $_GET['action'] === 'delete' && isset( $_GET['file_id'] ) ) {
-				error_log( 'Delete action detected for file ID: ' . $_GET['file_id'] );
+			if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['file_id'])) {
+				error_log('Delete action detected for file ID: ' . $_GET['file_id']);
 
-				check_admin_referer( 'delete_file_' . $_GET['file_id'] );
-				error_log( 'Nonce verified successfully' );
+				check_admin_referer('delete_file_' . $_GET['file_id']);
+				error_log('Nonce verified successfully');
 
-				$file_id = intval( $_GET['file_id'] );
-				$delete_result = $this->file_manager->delete_file( $file_id );
+				$file_id = intval($_GET['file_id']);
+				$delete_result = $this->file_manager->delete_file($file_id);
 
-				error_log( "Delete result for file ID $file_id: " . ( $delete_result ? 'success' : 'failure' ) );
+				error_log("Delete result for file ID $file_id: " . ($delete_result ? 'success' : 'failure'));
 
-				if ( $delete_result ) {
-					$this->redirect_with_message( 'success', 'File deleted successfully.' );
+				if ($delete_result) {
+					$this->redirect_with_message('success', 'File deleted successfully.');
 				} else {
-					$this->redirect_with_message( 'error', 'Error deleting file.' );
+					$this->redirect_with_message('error', 'Error deleting file.');
 				}
 
 			} else {
-				error_log( 'No delete action detected in handle_file_deletion' );
+				error_log('No delete action detected in handle_file_deletion');
 			}
 
-			error_log( 'Exiting handle_file_deletion method' );
+			error_log('Exiting handle_file_deletion method');
 		}
 	}
 
@@ -294,44 +404,45 @@ class AdminPage {
 	 * 
 	 * @return void
 	 */
-	public function handle_file_update() {
-		if ( isset( $_POST['update_file'] ) && isset( $_POST['file_id'] ) ) {
-			error_log( 'Step 1: Entering handle_file_update method' );
-			error_log( 'Step 2: $_FILES: ' . print_r( $_FILES, true ) );
-			error_log( 'Step 3: $_POST: ' . print_r( $_POST, true ) );
+	public function handle_file_update()
+	{
+		if (isset($_POST['update_file']) && isset($_POST['file_id'])) {
+			error_log('Step 1: Entering handle_file_update method');
+			error_log('Step 2: $_FILES: ' . print_r($_FILES, true));
+			error_log('Step 3: $_POST: ' . print_r($_POST, true));
 
-			if ( isset( $_POST['update_file'] ) && isset( $_POST['file_id'] ) ) {
-				error_log( 'Step 4: Update file action detected' );
+			if (isset($_POST['update_file']) && isset($_POST['file_id'])) {
+				error_log('Step 4: Update file action detected');
 
-				check_admin_referer( 'edit_file_' . $_POST['file_id'], 'edit_file_nonce' );
-				error_log( 'Step 5: Nonce verified successfully' );
+				check_admin_referer('edit_file_' . $_POST['file_id'], 'edit_file_nonce');
+				error_log('Step 5: Nonce verified successfully');
 
-				$file_id = intval( $_POST['file_id'] );
-				$new_file = isset( $_FILES['new_file'] ) ? $_FILES['new_file'] : null;
-				$version = isset( $_POST['version'] ) ? sanitize_text_field( $_POST['version'] ) : '';
+				$file_id = intval($_POST['file_id']);
+				$new_file = isset($_FILES['new_file']) ? $_FILES['new_file'] : null;
+				$version = isset($_POST['version']) ? sanitize_text_field($_POST['version']) : '';
 
 				// If auto-increment is enabled and a new file is uploaded, pass an empty version
-				$auto_increment_version = get_option( 'fvm_auto_increment_version', 1 );
-				if ( $auto_increment_version && $new_file && ! empty( $new_file['tmp_name'] ) ) {
+				$auto_increment_version = get_option('fvm_auto_increment_version', 1);
+				if ($auto_increment_version && $new_file && !empty($new_file['tmp_name'])) {
 					$version = '';
 				}
 
-				error_log( 'Step 6: $new_file: ' . print_r( $new_file, true ) );
+				error_log('Step 6: $new_file: ' . print_r($new_file, true));
 
-				$update_result = $this->file_manager->update_file( $file_id, $new_file, $version );
+				$update_result = $this->file_manager->update_file($file_id, $new_file, $version);
 
-				error_log( 'Step 7: Update result for file ID ' . $file_id . ': ' . ( $update_result ? 'success' : 'failure' ) );
+				error_log('Step 7: Update result for file ID ' . $file_id . ': ' . ($update_result ? 'success' : 'failure'));
 
-				if ( $update_result ) {
-					$this->redirect_with_message( 'success', 'File updated successfully.' );
+				if ($update_result) {
+					$this->redirect_with_message('success', 'File updated successfully.');
 				} else {
-					$this->redirect_with_message( 'error', 'Error updating file.' );
+					$this->redirect_with_message('error', 'Error updating file.');
 				}
 			} else {
-				error_log( 'Step 8: No update action detected in handle_file_update' );
+				error_log('Step 8: No update action detected in handle_file_update');
 			}
 
-			error_log( 'Exiting handle_file_update method' );
+			error_log('Exiting handle_file_update method');
 		}
 	}
 
@@ -340,32 +451,33 @@ class AdminPage {
 	 * 
 	 * @return void
 	 */
-	public function handle_bulk_actions() {
+	public function handle_bulk_actions()
+	{
 		$this->setup_list_table();
 
 		$action = $this->wp_list_table->current_action();
 
-		if ( $action && in_array( $action, [ 'delete', 'bulk-delete' ] ) ) {
-			check_admin_referer( 'bulk-' . $this->wp_list_table->_args['plural'] );
+		if ($action && in_array($action, ['delete', 'bulk-delete'])) {
+			check_admin_referer('bulk-' . $this->wp_list_table->_args['plural']);
 
-			$file_ids = isset( $_REQUEST['file'] ) ? (array) $_REQUEST['file'] : [];
+			$file_ids = isset($_REQUEST['file']) ? (array) $_REQUEST['file'] : [];
 
-			if ( ! empty( $file_ids ) ) {
+			if (!empty($file_ids)) {
 				$deleted_count = 0;
-				foreach ( $file_ids as $file_id ) {
-					if ( $this->file_manager->delete_file( intval( $file_id ) ) ) {
+				foreach ($file_ids as $file_id) {
+					if ($this->file_manager->delete_file(intval($file_id))) {
 						$deleted_count++;
 					}
 				}
 
-				if ( $deleted_count > 0 ) {
+				if ($deleted_count > 0) {
 					$message = sprintf(
-						_n( '%s file deleted successfully.', '%s files deleted successfully.', $deleted_count, 'file-version-manager' ),
-						number_format_i18n( $deleted_count )
+						_n('%s file deleted successfully.', '%s files deleted successfully.', $deleted_count, 'file-version-manager'),
+						number_format_i18n($deleted_count)
 					);
-					$this->redirect_with_message( 'success', $message );
+					$this->redirect_with_message('success', $message);
 				} else {
-					$this->redirect_with_message( 'error', 'No files were deleted.' );
+					$this->redirect_with_message('error', 'No files were deleted.');
 				}
 			}
 		}
@@ -378,25 +490,26 @@ class AdminPage {
 	 * @param string $message
 	 * @return void
 	 */
-	private function redirect_with_message( $status, $message ) {
+	private function redirect_with_message($status, $message)
+	{
 		$redirect_url = add_query_arg(
-			[ 
+			[
 				'page' => 'file-version-manager',
 				'update' => $status,
-				'message' => urlencode( $message ),
+				'message' => urlencode($message),
 			],
-			admin_url( 'admin.php' )
+			admin_url('admin.php')
 		);
 
-		if ( ! headers_sent() ) {
-			wp_redirect( $redirect_url );
+		if (!headers_sent()) {
+			wp_redirect($redirect_url);
 			exit;
 		} else {
 			echo '<script type="text/javascript">';
-			echo 'window.location.href="' . esc_js( $redirect_url ) . '";';
+			echo 'window.location.href="' . esc_js($redirect_url) . '";';
 			echo '</script>';
 			echo '<noscript>';
-			echo '<meta http-equiv="refresh" content="0;url=' . esc_url( $redirect_url ) . '" />';
+			echo '<meta http-equiv="refresh" content="0;url=' . esc_url($redirect_url) . '" />';
 			echo '</noscript>';
 			exit;
 		}
