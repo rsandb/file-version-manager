@@ -30,18 +30,18 @@ class AdminPage
 			'File Version Manager',
 			'Files',
 			'manage_options',
-			'file-version-manager',
+			'fvm_files',
 			array($this, 'display_admin_page'),
 			'dashicons-media-default',
 			11
 		);
 
 		add_submenu_page(
-			'file-version-manager',
+			'fvm_files',
 			'All Files',
 			'All Files',
 			'manage_options',
-			'file-version-manager',
+			'fvm_files',
 			array($this, 'display_admin_page')
 		);
 	}
@@ -87,7 +87,7 @@ class AdminPage
 	{
 		if (function_exists('get_current_screen')) {
 			$screen = get_current_screen();
-			if ($screen && $screen->id === 'toplevel_page_file-version-manager') {
+			if ($screen && $screen->id === 'toplevel_page_fvm_files') {
 				wp_enqueue_style('file-version-manager-styles', plugin_dir_url(dirname(__FILE__)) . 'css/admin.css');
 			}
 		}

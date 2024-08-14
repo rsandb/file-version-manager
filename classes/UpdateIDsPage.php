@@ -9,28 +9,32 @@ namespace LVAI\FileVersionManager;
  * - Handle the CSV upload and update process
  * - Clear the log file
  */
-class UpdateIDsPage {
+class UpdateIDsPage
+{
 	private $update_ids;
 	private $log = [];
 
-	public function __construct( UpdateIDs $update_ids ) {
+	public function __construct(UpdateIDs $update_ids)
+	{
 		$this->update_ids = $update_ids;
 	}
 
-	public function init() {
-		add_action( 'admin_menu', [ $this, 'add_update_ids_page' ] );
-		add_action( 'admin_post_fvm_update_ids', [ $this, 'handle_csv_upload' ] );
-		add_action( 'admin_post_fvm_clear_log', [ $this, 'handle_clear_log' ] );
+	public function init()
+	{
+		add_action('admin_menu', [$this, 'add_update_ids_page']);
+		add_action('admin_post_fvm_update_ids', [$this, 'handle_csv_upload']);
+		add_action('admin_post_fvm_clear_log', [$this, 'handle_clear_log']);
 	}
 
-	public function add_update_ids_page() {
+	public function add_update_ids_page()
+	{
 		add_submenu_page(
-			'file-version-manager',
+			'fvm_files',
 			'Update IDs',
 			'Update IDs',
 			'manage_options',
-			'file-version-manager-update-ids',
-			[ $this, 'render_update_ids_page' ]
+			'fvm_update_ids',
+			[$this, 'render_update_ids_page']
 		);
 	}
 
@@ -39,20 +43,21 @@ class UpdateIDsPage {
 	 *
 	 * @return void
 	 */
-	public function render_update_ids_page() {
+	public function render_update_ids_page()
+	{
 		?>
 		<div class="wrap">
 			<h1>Update File IDs</h1>
 			<?php
-			if ( isset( $_GET['update'] ) ) {
-				$message = urldecode( $_GET['message'] );
-				$class = ( $_GET['update'] === 'success' ) ? 'notice-success' : 'notice-error';
+			if (isset($_GET['update'])) {
+				$message = urldecode($_GET['message']);
+				$class = ($_GET['update'] === 'success') ? 'notice-success' : 'notice-error';
 				echo "<div class='notice $class is-dismissible'><p>$message</p></div>";
 			}
 			?>
-			<form method="post" enctype="multipart/form-data" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+			<form method="post" enctype="multipart/form-data" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
 				<input type="hidden" name="action" value="fvm_update_ids">
-				<?php wp_nonce_field( 'fvm_update_ids', 'fvm_update_ids_nonce' ); ?>
+				<?php wp_nonce_field('fvm_update_ids', 'fvm_update_ids_nonce'); ?>
 				<table class="form-table">
 					<tr>
 						<th scope="row"><label for="csv_file">CSV File</label></th>
@@ -74,18 +79,18 @@ class UpdateIDsPage {
 					?>
 
 				</table>
-				<?php submit_button( 'Update IDs' ); ?>
+				<?php submit_button('Update IDs'); ?>
 			</form>
 			<?php
 			$log_file = WP_CONTENT_DIR . '/fvm_update_ids.log';
-			if ( file_exists( $log_file ) ) {
+			if (file_exists($log_file)) {
 				echo "<h2>Update Log</h2>";
-				echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+				echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
 				echo '<input type="hidden" name="action" value="fvm_clear_log">';
-				wp_nonce_field( 'fvm_clear_log', 'fvm_clear_log_nonce' );
-				submit_button( 'Clear Log', 'secondary', 'clear_log', false );
+				wp_nonce_field('fvm_clear_log', 'fvm_clear_log_nonce');
+				submit_button('Clear Log', 'secondary', 'clear_log', false);
 				echo '</form>';
-				echo "<pre>" . esc_html( file_get_contents( $log_file ) ) . "</pre>";
+				echo "<pre>" . esc_html(file_get_contents($log_file)) . "</pre>";
 			}
 			?>
 		</div>
@@ -97,27 +102,28 @@ class UpdateIDsPage {
 	 *
 	 * @return void
 	 */
-	public function handle_csv_upload() {
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( 'Unauthorized access' );
+	public function handle_csv_upload()
+	{
+		if (!current_user_can('manage_options')) {
+			wp_die('Unauthorized access');
 		}
 
-		check_admin_referer( 'fvm_update_ids', 'fvm_update_ids_nonce' );
+		check_admin_referer('fvm_update_ids', 'fvm_update_ids_nonce');
 
-		if ( ! isset( $_FILES['csv_file'] ) ) {
-			$this->redirect_with_message( 'error', 'No file uploaded' );
+		if (!isset($_FILES['csv_file'])) {
+			$this->redirect_with_message('error', 'No file uploaded');
 			return;
 		}
 
 		$csv_file = $_FILES['csv_file']['tmp_name'];
-		$result = $this->update_ids->process_csv( $csv_file );
+		$result = $this->update_ids->process_csv($csv_file);
 
 		$this->write_log();
 
-		if ( $result['success'] ) {
-			$this->redirect_with_message( 'success', $result['message'] );
+		if ($result['success']) {
+			$this->redirect_with_message('success', $result['message']);
 		} else {
-			$this->redirect_with_message( 'error', $result['message'] );
+			$this->redirect_with_message('error', $result['message']);
 		}
 	}
 
@@ -128,15 +134,16 @@ class UpdateIDsPage {
 	 * @param string $message The message to display.
 	 * @return void
 	 */
-	private function redirect_with_message( $status, $message ) {
-		wp_redirect( add_query_arg(
-			[ 
+	private function redirect_with_message($status, $message)
+	{
+		wp_redirect(add_query_arg(
+			[
 				'page' => 'file-version-manager-update-ids',
 				'update' => $status,
-				'message' => urlencode( $message ),
+				'message' => urlencode($message),
 			],
-			admin_url( 'admin.php' )
-		) );
+			admin_url('admin.php')
+		));
 		exit;
 	}
 
@@ -145,9 +152,10 @@ class UpdateIDsPage {
 	 *
 	 * @return void
 	 */
-	private function write_log() {
+	private function write_log()
+	{
 		$log_file = WP_CONTENT_DIR . '/fvm_update_ids.log';
-		file_put_contents( $log_file, implode( "\n", $this->update_ids->get_log() ) . "\n\n", FILE_APPEND );
+		file_put_contents($log_file, implode("\n", $this->update_ids->get_log()) . "\n\n", FILE_APPEND);
 	}
 
 	/**
@@ -155,26 +163,27 @@ class UpdateIDsPage {
 	 *
 	 * @return void
 	 */
-	public function handle_clear_log() {
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( 'Unauthorized access' );
+	public function handle_clear_log()
+	{
+		if (!current_user_can('manage_options')) {
+			wp_die('Unauthorized access');
 		}
 
-		check_admin_referer( 'fvm_clear_log', 'fvm_clear_log_nonce' );
+		check_admin_referer('fvm_clear_log', 'fvm_clear_log_nonce');
 
 		$log_file = WP_CONTENT_DIR . '/fvm_update_ids.log';
-		if ( file_exists( $log_file ) ) {
-			unlink( $log_file );
+		if (file_exists($log_file)) {
+			unlink($log_file);
 		}
 
-		wp_redirect( add_query_arg(
-			[ 
+		wp_redirect(add_query_arg(
+			[
 				'page' => 'file-version-manager-update-ids',
 				'update' => 'success',
-				'message' => urlencode( 'Log cleared successfully' ),
+				'message' => urlencode('Log cleared successfully'),
 			],
-			admin_url( 'admin.php' )
-		) );
+			admin_url('admin.php')
+		));
 		exit;
 	}
 }

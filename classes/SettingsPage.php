@@ -7,16 +7,17 @@ class SettingsPage
 	{
 		add_action('admin_menu', [$this, 'add_settings_page']);
 		add_action('admin_init', [$this, 'register_settings']);
+		add_action('admin_enqueue_scripts', [$this, 'enqueue_styles']);
 	}
 
 	public function add_settings_page()
 	{
 		add_submenu_page(
-			'file-version-manager',
+			'fvm_files',
 			'File Version Manager Settings',
 			'Settings',
 			'manage_options',
-			'file-version-manager-settings',
+			'fvm_settings',
 			array($this, 'render_settings_page')
 		);
 	}
@@ -28,55 +29,38 @@ class SettingsPage
 		register_setting('fvm_settings', 'fvm_auto_increment_version');
 	}
 
+	public function enqueue_styles()
+	{
+		if (function_exists('get_current_screen')) {
+			$screen = get_current_screen();
+			if ($screen && $screen->id === 'files_page_fvm_settings') {
+				wp_enqueue_style('file-version-manager-styles', plugin_dir_url(dirname(__FILE__)) . 'css/settings.css');
+			}
+		}
+	}
+
 	public function render_settings_page()
 	{
+		$active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'settings';
 		?>
 		<div class="wrap">
 			<h1>File Version Manager</h1>
-			<form method="post" action="options.php">
-				<?php settings_fields('fvm_settings'); ?>
-				<?php do_settings_sections('fvm_settings'); ?>
-				<table class="form-table">
-					<tr valign="top">
-						<th scope="row">Custom Upload Folder</th>
-						<td>
-							<input type="text" name="fvm_custom_directory"
-								value="<?php echo esc_attr(get_option('fvm_custom_directory')); ?>" class="regular-text" />
-							<p class="description">Enter the name of the folder within the WordPress uploads directory. Leave
-								blank to use the default 'file-version-manager' folder.</p>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row">Auto-Increment Version</th>
-						<td>
-							<input type="checkbox" name="fvm_auto_increment_version" value="1" <?php checked(get_option('fvm_auto_increment_version', 1), 1); ?> />
-							<p class="description">Enable auto-increment version when files are replaced.</p>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row">Debug logs</th>
-						<td>
-							<input type="checkbox" name="fvm_debug_logs" value="1" <?php checked(get_option('fvm_debug_logs'), 1); ?> />
-							<p class="description">Enable debug logs.</p>
-						</td>
-					</tr>
-				</table>
-				<?php submit_button(); ?>
-			</form>
-
-			<div class="wrap">
-				<h1>Export WP-Filebase Files</h1>
+			<div class="fvm-settings-tabs-container">
+				<div class="fvm-settings-tabs">
+					<a class="fvm-settings-tab <?php echo $active_tab === 'settings' ? 'active' : ''; ?>"
+						href="?page=fvm_settings&tab=settings">Settings</a>
+					<a class="fvm-settings-tab <?php echo $active_tab === 'wp-filebase-pro' ? 'active' : ''; ?>"
+						href="?page=fvm_settings&tab=wp-filebase-pro">WP Filebase Pro</a>
+				</div>
+			</div>
+			<div class="fvm-settings-container">
 				<?php
-				global $wpdb;
-				$files_table = $wpdb->prefix . 'wpfb_files';
-				$file_count = $wpdb->get_var("SELECT COUNT(*) FROM $files_table");
+				if ($active_tab === 'settings') {
+					$this->render_settings_tab();
+				} elseif ($active_tab === 'wp-filebase-pro') {
+					$this->render_wp_filebase_pro_tab();
+				}
 				?>
-				<p>There are currently <?php echo esc_html($file_count); ?> entries in the WP-Filebase files table.</p>
-				<form method="post">
-					<!-- <label for="delete_thumbnails">Delete thumbnails</label>
-					<input type="checkbox" name="delete_thumbnails" id="delete_thumbnails"> -->
-					<input type="submit" name="export_wpfilebase" class="button button-primary" value="Export as CSV">
-				</form>
 			</div>
 			<?php
 
@@ -91,6 +75,77 @@ class SettingsPage
 			?>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Render the settings tab
+	 * 
+	 * @return void
+	 */
+	private function render_settings_tab()
+	{
+		?>
+		<form method="post" action="options.php">
+			<?php settings_fields('fvm_settings'); ?>
+			<?php do_settings_sections('fvm_settings'); ?>
+			<table class="form-table">
+				<tr valign="top">
+					<th scope="row">Custom Upload Folder</th>
+					<td>
+						<input type="text" name="fvm_custom_directory"
+							value="<?php echo esc_attr(get_option('fvm_custom_directory')); ?>" class="regular-text" />
+						<p class="description">Enter the name of the folder within the WordPress uploads directory.
+							Leave
+							blank to use the default 'file-version-manager' folder.</p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row">Auto-Increment Version</th>
+					<td>
+						<input type="checkbox" name="fvm_auto_increment_version" value="1" <?php checked(get_option('fvm_auto_increment_version', 1), 1); ?> />
+						<p class="description">Enable auto-increment version when files are replaced.</p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row">Debug logs</th>
+					<td>
+						<input type="checkbox" name="fvm_debug_logs" value="1" <?php checked(get_option('fvm_debug_logs'), 1); ?> disabled />
+						<p class="description">Enable debug logs. (Currently not working)</p>
+					</td>
+				</tr>
+			</table>
+			<?php submit_button(); ?>
+		</form>
+		<?php
+	}
+
+	/**
+	 * Render the WP Filebase Pro settings tab
+	 * 
+	 * @return void
+	 */
+	private function render_wp_filebase_pro_tab()
+	{
+		?>
+		<h2>Export WP-Filebase Files</h2>
+		<?php
+		global $wpdb;
+		$files_table = $wpdb->prefix . 'wpfb_files';
+		$file_count = $wpdb->get_var("SELECT COUNT(*) FROM $files_table");
+		?>
+		<p>There are currently <?php echo esc_html($file_count); ?> entries in the WP-Filebase files table.</p>
+		<form method="post">
+			<input type="submit" name="export_wpfilebase" class="button button-primary" value="Export as CSV">
+		</form>
+		<?php
+		if (isset($_POST['export_wpfilebase'])) {
+			$result = $this->export_wpfilebase_files_as_csv();
+			if (is_array($result) && isset($result['success'])) {
+				echo '<div class="updated"><p>' . esc_html($result['message']) . ' <a href="' . esc_url($result['file_url']) . '" target="_blank">Download CSV</a></p></div>';
+			} else {
+				echo '<div class="error"><p>' . esc_html($result) . '</p></div>';
+			}
+		}
 	}
 
 	function export_wpfilebase_files_as_csv()
