@@ -2,7 +2,7 @@
 /*
 Plugin Name: File Version Manager
 Description: Conveniently upload and update files site-wide.
-Version: 0.7.0
+Version: 0.8.0
 Author: Riley Sandborg
 Author URI: https://rileysandb.org/
 */
@@ -29,23 +29,22 @@ require_once __DIR__ . '/classes/Shortcode.php';
 require_once __DIR__ . '/classes/Activate.php';
 require_once __DIR__ . '/classes/Deactivate.php';
 require_once __DIR__ . '/classes/FileListTable.php';
-require_once __DIR__ . '/classes/UpdateIDsPage.php';
+// require_once __DIR__ . '/classes/UpdateIDsPage.php';
 require_once __DIR__ . '/classes/UpdateIDs.php';
 // require_once __DIR__ . '/ajax-handlers.php';
 
+$update_ids = new UpdateIDs();
 $file_manager = new FileManager($GLOBALS['wpdb']);
-$settings_page = new SettingsPage();
 $shortcode = new Shortcode($GLOBALS['wpdb']);
 $admin_page = new AdminPage($file_manager);
-$update_ids = new UpdateIDs();
-$update_ids_page = new UpdateIDsPage($update_ids);
+$settings_page = new SettingsPage($update_ids);
+// $update_ids_page = new UpdateIDsPage($update_ids);
 
 $plugin = new Plugin(
 	$file_manager,
 	$admin_page,
 	$settings_page,
-	$shortcode,
-	$update_ids_page
+	$shortcode
 );
 
 $plugin->init();

@@ -494,7 +494,7 @@ class AdminPage
 	{
 		$redirect_url = add_query_arg(
 			[
-				'page' => 'file-version-manager',
+				'page' => 'fvm_files',
 				'update' => $status,
 				'message' => urlencode($message),
 			],

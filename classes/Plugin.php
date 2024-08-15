@@ -8,20 +8,18 @@ class Plugin
 	private $admin_page;
 	private $settings_page;
 	private $shortcode;
-	private $update_ids_page;
+	private $update_ids;
 
 	public function __construct(
 		FileManager $file_manager,
 		AdminPage $admin_page,
 		SettingsPage $settings_page,
 		Shortcode $shortcode,
-		UpdateIDsPage $update_ids_page
 	) {
 		$this->file_manager = $file_manager;
 		$this->admin_page = $admin_page;
 		$this->settings_page = $settings_page;
 		$this->shortcode = $shortcode;
-		$this->update_ids_page = $update_ids_page;
 	}
 
 	public function init()
@@ -39,7 +37,6 @@ class Plugin
 		$this->admin_page->init();
 		$this->settings_page->init();
 		$this->shortcode->init();
-		$this->update_ids_page->init();
 
 		add_action('template_redirect', [$this, 'handle_download']);
 		add_filter('admin_footer_text', [$this, 'custom_admin_footer_text']);
