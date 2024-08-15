@@ -29,7 +29,6 @@ require_once __DIR__ . '/classes/Shortcode.php';
 require_once __DIR__ . '/classes/Activate.php';
 require_once __DIR__ . '/classes/Deactivate.php';
 require_once __DIR__ . '/classes/FileListTable.php';
-// require_once __DIR__ . '/classes/UpdateIDsPage.php';
 require_once __DIR__ . '/classes/UpdateIDs.php';
 // require_once __DIR__ . '/ajax-handlers.php';
 
@@ -38,7 +37,6 @@ $file_manager = new FileManager($GLOBALS['wpdb']);
 $shortcode = new Shortcode($GLOBALS['wpdb']);
 $admin_page = new AdminPage($file_manager);
 $settings_page = new SettingsPage($update_ids);
-// $update_ids_page = new UpdateIDsPage($update_ids);
 
 $plugin = new Plugin(
 	$file_manager,
