@@ -1,162 +1,152 @@
 <?php
 namespace LVAI\FileVersionManager;
 
-if (!class_exists('WP_List_Table')) {
-	require_once(ABSPATH . 'wp-admin/includes/class-wp-list-table.php');
+if ( ! class_exists( 'WP_List_Table' ) ) {
+	require_once( ABSPATH . 'wp-admin/includes/class-wp-list-table.php' );
 }
 
-class FileListTable extends \WP_List_Table
-{
+class FileListTable extends \WP_List_Table {
 	private $file_manager;
 
-	public function __construct($file_manager)
-	{
-		parent::__construct([
+	public function __construct( $file_manager ) {
+		parent::__construct( [ 
 			'singular' => 'file',
 			'plural' => 'files',
 			'ajax' => false,
-		]);
+		] );
 		$this->file_manager = $file_manager;
 	}
 
-	private function get_table_name()
-	{
+	private function get_table_name() {
 		global $wpdb;
 		return $wpdb->prefix . Constants::TABLE_NAME;
 	}
 
-	public function prepare_items()
-	{
-		if (!$this->ensure_table_exists()) {
+	public function prepare_items() {
+		if ( ! $this->ensure_table_exists() ) {
 			return;
 		}
 
-		$search = isset($_REQUEST['s']) ? sanitize_text_field($_REQUEST['s']) : '';
+		$search = isset( $_REQUEST['s'] ) ? sanitize_text_field( $_REQUEST['s'] ) : '';
 
 		$columns = $this->get_columns();
 		$sortable = $this->get_sortable_columns();
 		$hidden = array();
 
-		$this->_column_headers = array($columns, $hidden, $sortable);
+		$this->_column_headers = array( $columns, $hidden, $sortable );
 
-		$per_page = $this->get_items_per_page('fvm_files_per_page', 20);
+		$per_page = $this->get_items_per_page( 'fvm_files_per_page', 50 );
 		$current_page = $this->get_pagenum();
-		$total_items = $this->get_total_items($search);
+		$total_items = $this->get_total_items( $search );
 
-		$this->set_pagination_args([
+		$this->set_pagination_args( [ 
 			'total_items' => $total_items,
 			'per_page' => $per_page,
-			'total_pages' => ceil($total_items / $per_page),
-		]);
+			'total_pages' => ceil( $total_items / $per_page ),
+		] );
 
-		$orderby = isset($_REQUEST['orderby']) ? sanitize_key($_REQUEST['orderby']) : 'date_modified';
-		$order = isset($_REQUEST['order']) ? sanitize_key($_REQUEST['order']) : 'desc';
+		$orderby = isset( $_REQUEST['orderby'] ) ? sanitize_key( $_REQUEST['orderby'] ) : 'date_modified';
+		$order = isset( $_REQUEST['order'] ) ? sanitize_key( $_REQUEST['order'] ) : 'desc';
 
-		$this->items = $this->get_files($per_page, $current_page, $orderby, $order, $search);
+		$this->items = $this->get_files( $per_page, $current_page, $orderby, $order, $search );
 
 		$this->process_bulk_action();
 	}
 
-	public function get_files($per_page, $current_page, $orderby = 'date_modified', $order = 'desc', $search = '')
-	{
+	public function get_files( $per_page, $current_page, $orderby = 'date_modified', $order = 'desc', $search = '' ) {
 		global $wpdb;
 		$table_name = $this->get_table_name();
-		$offset = ($current_page - 1) * $per_page;
+		$offset = ( $current_page - 1 ) * $per_page;
 
 		// Validate $orderby to prevent SQL injection
-		$allowed_columns = array_keys($this->get_sortable_columns());
-		if (!in_array($orderby, $allowed_columns)) {
+		$allowed_columns = array_keys( $this->get_sortable_columns() );
+		if ( ! in_array( $orderby, $allowed_columns ) ) {
 			$orderby = 'date_modified';
 		}
 
 		// Validate $order
-		$order = strtoupper($order);
-		if (!in_array($order, ['ASC', 'DESC'])) {
+		$order = strtoupper( $order );
+		if ( ! in_array( $order, [ 'ASC', 'DESC' ] ) ) {
 			$order = 'DESC';
 		}
 
 		$search_query = '';
-		if (!empty($search)) {
-			$search_query = $wpdb->prepare("WHERE file_name LIKE %s", '%' . $wpdb->esc_like($search) . '%');
+		if ( ! empty( $search ) ) {
+			$search_query = $wpdb->prepare( "WHERE file_name LIKE %s", '%' . $wpdb->esc_like( $search ) . '%' );
 		}
 
 		$query = "SELECT * FROM $table_name $search_query ORDER BY $orderby $order LIMIT %d OFFSET %d";
-		$query = $wpdb->prepare($query, $per_page, $offset);
+		$query = $wpdb->prepare( $query, $per_page, $offset );
 
-		$results = $wpdb->get_results($query, ARRAY_A);
+		$results = $wpdb->get_results( $query, ARRAY_A );
 
 		// Debug: Check if we're getting results
-		if (empty($results)) {
-			error_log("No results found in get_files method. Query: " . $wpdb->last_query);
+		if ( empty( $results ) ) {
+			error_log( "No results found in get_files method. Query: " . $wpdb->last_query );
 		}
 
 		return $results;
 	}
 
-	public function get_bulk_actions()
-	{
-		return [
+	public function get_bulk_actions() {
+		return [ 
 			'delete' => 'Delete',
 		];
 	}
 
-	public function get_total_items($search = '')
-	{
+	public function get_total_items( $search = '' ) {
 		global $wpdb;
 		$table_name = $this->get_table_name();
 
 		$search_query = '';
-		if (!empty($search)) {
-			$search_query = $wpdb->prepare("WHERE file_name LIKE %s", '%' . $wpdb->esc_like($search) . '%');
+		if ( ! empty( $search ) ) {
+			$search_query = $wpdb->prepare( "WHERE file_name LIKE %s", '%' . $wpdb->esc_like( $search ) . '%' );
 		}
 
-		return $wpdb->get_var("SELECT COUNT(*) FROM $table_name $search_query");
+		return $wpdb->get_var( "SELECT COUNT(*) FROM $table_name $search_query" );
 	}
 
-	public function search_box($text, $input_id)
-	{
-		if (empty($_REQUEST['s']) && !$this->has_items()) {
+	public function search_box( $text, $input_id ) {
+		if ( empty( $_REQUEST['s'] ) && ! $this->has_items() ) {
 			return;
 		}
 
 		$input_id = $input_id . '-search-input';
 
-		if (!empty($_REQUEST['orderby'])) {
-			echo '<input type="hidden" name="orderby" value="' . esc_attr($_REQUEST['orderby']) . '" />';
+		if ( ! empty( $_REQUEST['orderby'] ) ) {
+			echo '<input type="hidden" name="orderby" value="' . esc_attr( $_REQUEST['orderby'] ) . '" />';
 		}
-		if (!empty($_REQUEST['order'])) {
-			echo '<input type="hidden" name="order" value="' . esc_attr($_REQUEST['order']) . '" />';
+		if ( ! empty( $_REQUEST['order'] ) ) {
+			echo '<input type="hidden" name="order" value="' . esc_attr( $_REQUEST['order'] ) . '" />';
 		}
-		if (!empty($_REQUEST['post_mime_type'])) {
-			echo '<input type="hidden" name="post_mime_type" value="' . esc_attr($_REQUEST['post_mime_type']) . '" />';
+		if ( ! empty( $_REQUEST['post_mime_type'] ) ) {
+			echo '<input type="hidden" name="post_mime_type" value="' . esc_attr( $_REQUEST['post_mime_type'] ) . '" />';
 		}
-		if (!empty($_REQUEST['detached'])) {
-			echo '<input type="hidden" name="detached" value="' . esc_attr($_REQUEST['detached']) . '" />';
+		if ( ! empty( $_REQUEST['detached'] ) ) {
+			echo '<input type="hidden" name="detached" value="' . esc_attr( $_REQUEST['detached'] ) . '" />';
 		}
 		?>
 		<p class="search-box">
 			<label class="screen-reader-text"
-				for="<?php echo esc_attr($input_id); ?>"><?php echo esc_html($text); ?>:</label>
-			<input type="search" id="<?php echo esc_attr($input_id); ?>" name="s" value="<?php _admin_search_query(); ?>" />
-			<?php submit_button($text, 'button', false, false, array('id' => 'search-submit')); ?>
+				for="<?php echo esc_attr( $input_id ); ?>"><?php echo esc_html( $text ); ?>:</label>
+			<input type="search" id="<?php echo esc_attr( $input_id ); ?>" name="s" value="<?php _admin_search_query(); ?>" />
+			<?php submit_button( $text, 'button', false, false, array( 'id' => 'search-submit' ) ); ?>
 		</p>
 		<?php
 	}
 
-	private function ensure_table_exists()
-	{
+	private function ensure_table_exists() {
 		global $wpdb;
 		$table_name = $this->get_table_name();
-		if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") != $table_name) {
-			error_log("Table $table_name does not exist.");
+		if ( $wpdb->get_var( "SHOW TABLES LIKE '$table_name'" ) != $table_name ) {
+			error_log( "Table $table_name does not exist." );
 			return false;
 		}
 		return true;
 	}
 
-	public function get_columns()
-	{
-		return [
+	public function get_columns() {
+		return [ 
 			'cb' => '<input type="checkbox" />',
 			'file_name' => 'File Name',
 			'file_type' => 'File Type',
@@ -167,24 +157,22 @@ class FileListTable extends \WP_List_Table
 		];
 	}
 
-	public function get_sortable_columns()
-	{
-		return [
-			'file_name' => ['file_name', true],
-			'date_modified' => ['date_modified', true],
+	public function get_sortable_columns() {
+		return [ 
+			'file_name' => [ 'file_name', true ],
+			'date_modified' => [ 'date_modified', true ],
 		];
 	}
 
-	public function column_default($item, $column_name)
-	{
-		switch ($column_name) {
+	public function column_default( $item, $column_name ) {
+		switch ( $column_name ) {
 			case 'file_name':
 			case 'file_type':
 			case 'version':
 			case 'date_modified':
-				return $item[$column_name];
+				return $item[ $column_name ];
 			case 'file_size':
-				return $this->format_file_size($item[$column_name]);
+				return $this->format_file_size( $item[ $column_name ] );
 			case 'shortcode':
 				$shortcode = '[fvm id="' . $item['id'] . '"]';
 				return sprintf(
@@ -193,33 +181,31 @@ class FileListTable extends \WP_List_Table
                         <button type="button" class="button button-small copy-shortcode" data-shortcode="%s">Copy</button>
                     </div>',
 					$shortcode,
-					esc_attr($shortcode)
+					esc_attr( $shortcode )
 				);
 			default:
-				return print_r($item, true);
+				return print_r( $item, true );
 		}
 	}
 
-	public function column_cb($item)
-	{
+	public function column_cb( $item ) {
 		return sprintf(
 			'<input type="checkbox" name="file[]" value="%s" />',
 			$item['id']
 		);
 	}
 
-	public function column_file_name($item)
-	{
-		$actions = [
-			'id' => sprintf('<span>ID: %d</span>', $item['id']),
-			'edit' => sprintf('<a href="#" class="edit-file" data-file-id="%d">Edit</a>', $item['id']),
-			'view' => sprintf('<a href="%s" target="_blank">View</a>', esc_url($item['file_url'])),
-			'download' => sprintf('<a href="%s" download>Download</a>', esc_url($item['file_url'])),
-			'delete' => sprintf('<a href="%s" onclick="return confirm(\'Are you sure you want to delete this file?\')">Delete</a>', wp_nonce_url(admin_url('admin.php?page=fvm_files&action=delete&file_id=' . $item['id']), 'delete_file_' . $item['id'])),
+	public function column_file_name( $item ) {
+		$actions = [ 
+			'id' => sprintf( '<span>ID: %d</span>', $item['id'] ),
+			'edit' => sprintf( '<a href="#" class="edit-file" data-file-id="%d">Edit</a>', $item['id'] ),
+			'view' => sprintf( '<a href="%s" target="_blank">View</a>', esc_url( $item['file_url'] ) ),
+			'download' => sprintf( '<a href="%s" download>Download</a>', esc_url( $item['file_url'] ) ),
+			'delete' => sprintf( '<a href="%s" onclick="return confirm(\'Are you sure you want to delete this file?\')">Delete</a>', wp_nonce_url( admin_url( 'admin.php?page=fvm_files&action=delete&file_id=' . $item['id'] ), 'delete_file_' . $item['id'] ) ),
 		];
 
-		$file_icon = $this->get_file_icon_class($item['file_type']);
-		$file_name = sprintf('<div style="display: flex; gap: 6px;"><div class="dashicons %s"></div> <div>%s</div></div>', $file_icon, $item['file_name']);
+		$file_icon = $this->get_file_icon_class( $item['file_type'] );
+		$file_name = sprintf( '<div style="display: flex; gap: 6px;"><div class="dashicons %s"></div> <div>%s</div></div>', $file_icon, $item['file_name'] );
 
 		return sprintf(
 			'<div class="file-row" id="file-row-%d">
@@ -227,41 +213,48 @@ class FileListTable extends \WP_List_Table
 			</div>',
 			$item['id'],
 			$file_name,
-			$this->row_actions($actions)
+			$this->row_actions( $actions )
 		);
 	}
 
-	public function get_edit_form_html($file_id, $item)
-	{
+	public function get_edit_form_html( $file_id, $item ) {
 		ob_start();
 		?>
-		<div id="edit-modal-<?php echo esc_attr($file_id); ?>" class="edit-modal" style="display:none;">
+		<div id="edit-modal-<?php echo esc_attr( $file_id ); ?>" class="edit-modal" style="display:none;">
 			<div class="edit-modal-content">
 				<span class="close">&times;</span>
 				<form method="post" enctype="multipart/form-data">
-					<?php wp_nonce_field('edit_file_' . $file_id, 'edit_file_nonce'); ?>
-					<input type="hidden" name="file_id" value="<?php echo esc_attr($file_id); ?>">
+					<?php wp_nonce_field( 'edit_file_' . $file_id, 'edit_file_nonce' ); ?>
+					<input type="hidden" name="file_id" value="<?php echo esc_attr( $file_id ); ?>">
 					<table class="form-table">
 						<tr>
 							<th scope="row"><label for="file_name">File Name</label></th>
 							<td>
 								<p id="file_name" class="regular-text">
-									<?php echo esc_attr($item['file_name']); ?>
+									<?php echo esc_attr( $item['file_name'] ); ?>
 								</p>
 							</td>
 						</tr>
-						<?php if (!get_option('fvm_auto_increment_version', 1)): ?>
+						<tr>
+							<th scope="row"><label for="file_url">File URL</label></th>
+							<td>
+								<p id="file_url" class="regular-text">
+									<?php echo esc_attr( $item['file_url'] ); ?>
+								</p>
+							</td>
+						</tr>
+						<?php if ( ! get_option( 'fvm_auto_increment_version', 1 ) ) : ?>
 							<tr>
 								<th scope="row"><label for="version">Version</label></th>
 								<td>
 									<input type="number" step="0.1" min="0" name="version" id="version"
-										value="<?php echo esc_attr($item['version']); ?>" class="regular-text">
+										value="<?php echo esc_attr( $item['version'] ); ?>" class="regular-text">
 								</td>
 							</tr>
 						<?php endif; ?>
 						<tr>
 							<th scope="row"><label for="new_file">Replace File</label></th>
-							<td><input type="file" name="new_file" id="new_file" required></td>
+							<td><input type="file" name="new_file" id="new_file"></td>
 						</tr>
 					</table>
 					<p class="submit">
@@ -276,23 +269,21 @@ class FileListTable extends \WP_List_Table
 		return ob_get_clean();
 	}
 
-	private function format_file_size($size_in_bytes)
-	{
-		$units = array('B', 'KB', 'MB', 'GB', 'TB');
+	private function format_file_size( $size_in_bytes ) {
+		$units = array( 'B', 'KB', 'MB', 'GB', 'TB' );
 		$size = $size_in_bytes;
 		$unit_index = 0;
 
-		while ($size >= 1024 && $unit_index < count($units) - 1) {
+		while ( $size >= 1024 && $unit_index < count( $units ) - 1 ) {
 			$size /= 1024;
 			$unit_index++;
 		}
 
-		return round($size, 2) . ' ' . $units[$unit_index];
+		return round( $size, 2 ) . ' ' . $units[ $unit_index ];
 	}
 
-	private function get_file_icon_class($file_type)
-	{
-		$icon_map = [
+	private function get_file_icon_class( $file_type ) {
+		$icon_map = [ 
 			'image' => 'dashicons-format-image',
 			'audio' => 'dashicons-format-audio',
 			'video' => 'dashicons-format-video',
@@ -305,13 +296,13 @@ class FileListTable extends \WP_List_Table
 			'application/zip' => 'dashicons-media-archive',
 		];
 
-		$type_parts = explode('/', $file_type);
+		$type_parts = explode( '/', $file_type );
 		$general_type = $type_parts[0];
 
-		if (isset($icon_map[$file_type])) {
-			return $icon_map[$file_type];
-		} elseif (isset($icon_map[$general_type])) {
-			return $icon_map[$general_type];
+		if ( isset( $icon_map[ $file_type ] ) ) {
+			return $icon_map[ $file_type ];
+		} elseif ( isset( $icon_map[ $general_type ] ) ) {
+			return $icon_map[ $general_type ];
 		} else {
 			return 'dashicons-media-default';
 		}

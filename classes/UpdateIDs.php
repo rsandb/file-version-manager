@@ -33,12 +33,13 @@ class UpdateIDs {
 			$headers = $this->get_csv_headers( $file );
 			$id_index = array_search( 'id', $headers );
 			$file_name_index = array_search( 'file name', $headers );
+			$file_path_index = array_search( 'file path', $headers );
 
 			if ( $id_index === false || $file_name_index === false ) {
-				throw new Exception( "CSV file must contain 'ID' and 'File Name' columns." );
+				throw new Exception( "CSV file must contain 'id' and 'file name' columns." );
 			}
 
-			$this->update_ids_from_csv( $file, $id_index, $file_name_index );
+			$this->update_ids_from_csv( $file, $id_index, $file_name_index, $file_path_index );
 			$this->update_remaining_files();
 
 			$wpdb->query( 'COMMIT' );
@@ -90,54 +91,55 @@ class UpdateIDs {
 		return true;
 	}
 
-	/**
-	 * Updates the ID for a specific file name in the database.
-	 *
-	 * @param string $file_name The file name to update.
-	 * @param int $new_id The new ID to set for the file.
-	 * @return bool Whether the update was successful.
-	 */
-	public function update_file_id( $file_name, $new_id ) {
-		global $wpdb;
-		$table_name = $wpdb->prefix . Constants::TABLE_NAME;
+	// /**
+	//  * Updates the ID for a specific file name in the database.
+	//  *
+	//  * @param string $file_name The file name to update.
+	//  * @param int $new_id The new ID to set for the file.
+	//  * @return bool Whether the update was successful.
+	//  */
+	// public function update_file_id( $file_name, $new_id, $file_path ) {
+	// 	global $wpdb;
+	// 	$table_name = $wpdb->prefix . Constants::TABLE_NAME;
 
-		// Check if there are duplicate file names
-		$duplicate_count = $wpdb->get_var( $wpdb->prepare(
-			"SELECT COUNT(*) FROM $table_name WHERE file_name = %s",
-			$file_name
-		) );
+	// 	// Check if there are duplicate file names
+	// 	$duplicate_count = $wpdb->get_var( $wpdb->prepare(
+	// 		"SELECT COUNT(*) FROM $table_name WHERE file_name = %s",
+	// 		$file_name
+	// 	) );
 
-		$current_time = current_time( 'mysql' );
+	// 	$current_time = current_time( 'mysql' );
 
-		if ( $duplicate_count > 1 ) {
-			// If there are duplicates, update only one file and leave the others
-			$result = $wpdb->query( $wpdb->prepare(
-				"UPDATE $table_name SET id = %d, date_modified = %s WHERE file_name = %s LIMIT 1",
-				$new_id,
-				$current_time,
-				$file_name
-			) );
-		} else {
-			// If there's only one file, update it as before
-			$result = $wpdb->update(
-				$table_name,
-				[ 'id' => $new_id, 'date_modified' => $current_time ],
-				[ 'file_name' => $file_name ],
-				[ '%d', '%s' ],
-				[ '%s' ]
-			);
-		}
+	// 	if ( $duplicate_count > 1 ) {
+	// 		// If there are duplicates, update only one file and leave the others
+	// 		$result = $wpdb->query( $wpdb->prepare(
+	// 			"UPDATE $table_name SET id = %d, date_modified = %s WHERE file_name = %s LIMIT 1",
+	// 			$new_id,
+	// 			$current_time,
+	// 			$file_name,
+	// 			$file_path
+	// 		) );
+	// 	} else {
+	// 		// If there's only one file, update it as before
+	// 		$result = $wpdb->update(
+	// 			$table_name,
+	// 			[ 'id' => $new_id, 'date_modified' => $current_time ],
+	// 			[ 'file_name' => $file_name, 'file_path' => $file_path ],
+	// 			[ '%d', '%s' ],
+	// 			[ '%s', '%s' ]
+	// 		);
+	// 	}
 
-		if ( $result === false ) {
-			error_log( "Failed to update ID for file: $file_name. Error: " . $wpdb->last_error );
-			return false;
-		} elseif ( $result === 0 ) {
-			error_log( "No rows updated for file: $file_name. File might not exist." );
-			return false;
-		}
+	// 	if ( $result === false ) {
+	// 		error_log( "Failed to update ID for file: $file_name. Error: " . $wpdb->last_error );
+	// 		return false;
+	// 	} elseif ( $result === 0 ) {
+	// 		error_log( "No rows updated for file: $file_name. File might not exist." );
+	// 		return false;
+	// 	}
 
-		return true;
-	}
+	// 	return true;
+	// }
 
 	/**
 	 * Updates the IDs for file names in the database based on the CSV content.
@@ -147,33 +149,61 @@ class UpdateIDs {
 	 * @param int $file_name_index The index of the file name column in the CSV file.
 	 * @return void
 	 */
-	private function update_ids_from_csv( $file, $id_index, $file_name_index ) {
+	private function update_ids_from_csv( $file, $id_index, $file_name_index, $file_path_index ) {
 		global $wpdb;
 		$table_name = $wpdb->prefix . Constants::TABLE_NAME;
+
+		$duplicates = [];
 
 		while ( ( $data = fgetcsv( $file ) ) !== FALSE ) {
 			$id = intval( $data[ $id_index ] );
 			$file_name = $data[ $file_name_index ];
+			$file_path = $data[ $file_path_index ];
 
 			$this->highest_id = max( $this->highest_id, $id );
 
-			// Check if the ID already exists
-			$existing_id = $wpdb->get_var( $wpdb->prepare(
-				"SELECT id FROM $table_name WHERE id = %d",
+			// Check for duplicate file names
+			$duplicate_count = $wpdb->get_var( $wpdb->prepare(
+				"SELECT COUNT(*) FROM $table_name WHERE file_name = %s",
+				$file_name
+			) );
+
+			// Temporarily update existing files with the new ID
+			$existing_files_with_new_id = $wpdb->get_results( $wpdb->prepare(
+				"SELECT id, file_name FROM $table_name WHERE id = %d",
 				$id
 			) );
 
-			if ( $existing_id ) {
-				// If ID exists, update the file_name instead of the ID
-				$result = $wpdb->update(
+			foreach ( $existing_files_with_new_id as $existing_file ) {
+				$temp_id = $this->get_temporary_id();
+				$wpdb->update(
 					$table_name,
-					[ 'file_name' => $file_name, 'date_modified' => current_time( 'mysql' ) ],
+					[ 'id' => $temp_id ],
 					[ 'id' => $id ],
-					[ '%s', '%s' ],
+					[ '%d' ],
 					[ '%d' ]
 				);
+				$this->log[] = "Temporarily updated file '{$existing_file->file_name}' with ID $id to temporary ID $temp_id";
+			}
+
+			if ( $duplicate_count > 1 ) {
+				// Update only one of the duplicates
+				$result = $wpdb->query( $wpdb->prepare(
+					"UPDATE $table_name SET id = %d, date_modified = %s WHERE file_name = %s LIMIT 1",
+					$id,
+					current_time( 'mysql' ),
+					$file_name
+				) );
+
+				if ( $result === false ) {
+					$this->log[] = "Error updating one of duplicate files: $file_name with ID: $id";
+					throw new \Exception( "Database error: " . $wpdb->last_error );
+				} else {
+					$this->log[] = "Updated one of duplicate files: $file_name with ID: $id";
+					$duplicates[] = [ 'file_name' => $file_name, 'id' => $id ];
+				}
 			} else {
-				// If ID doesn't exist, perform the original update
+				// Existing logic for non-duplicate files
 				$result = $wpdb->update(
 					$table_name,
 					[ 'id' => $id, 'date_modified' => current_time( 'mysql' ) ],
@@ -181,14 +211,38 @@ class UpdateIDs {
 					[ '%d', '%s' ],
 					[ '%s' ]
 				);
-			}
 
-			if ( $result === false ) {
-				$this->log[] = "Error updating file: $file_name with ID: $id";
-			} else {
-				$this->log[] = "Updated file: $file_name with ID: $id";
+				if ( $result === false ) {
+					$insert_result = $wpdb->insert(
+						$table_name,
+						[ 'id' => $id, 'file_name' => $file_name, 'file_path' => $file_path, 'date_modified' => current_time( 'mysql' ) ],
+						[ '%d', '%s', '%s', '%s' ]
+					);
+
+					if ( $insert_result === false ) {
+						$this->log[] = "Error updating/inserting file: $file_name with ID: $id";
+						throw new \Exception( "Database error: " . $wpdb->last_error );
+					} else {
+						$this->log[] = "Inserted new file: $file_name with ID: $id";
+					}
+				} else {
+					$this->log[] = "Updated file: $file_name with ID: $id";
+				}
 			}
 		}
+
+		// Log all duplicates that got pushed to the end
+		foreach ( $duplicates as $duplicate ) {
+			$this->log[] = "Duplicate file pushed to end: {$duplicate['file_name']} with ID: {$duplicate['id']}";
+		}
+	}
+
+	private function get_temporary_id() {
+		global $wpdb;
+		$table_name = $wpdb->prefix . Constants::TABLE_NAME;
+
+		$temp_id = $wpdb->get_var( "SELECT MAX(id) FROM $table_name" ) + 1;
+		return $temp_id;
 	}
 
 	/**
