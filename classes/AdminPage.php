@@ -5,7 +5,6 @@ class AdminPage
 {
 	private $file_manager;
 	private $wp_list_table;
-	private $file_list_table;
 
 	public function __construct(FileManager $file_manager)
 	{
@@ -15,13 +14,12 @@ class AdminPage
 	public function init()
 	{
 		add_action('admin_menu', [$this, 'add_admin_menu']);
-		add_action('admin_init', [$this, 'handle_file_upload']);
-		add_action('admin_init', [$this, 'handle_file_deletion']);
-		add_action('admin_init', [$this, 'handle_bulk_actions']);
-		add_action('admin_init', [$this, 'handle_file_update']);
+		add_action('load-toplevel_page_file-version-manager', [$this, 'handle_file_upload']);
+		add_action('load-toplevel_page_file-version-manager', [$this, 'handle_file_deletion']);
+		add_action('load-toplevel_page_file-version-manager', [$this, 'handle_bulk_actions']);
+		add_action('load-toplevel_page_file-version-manager', [$this, 'handle_file_update']);
 		add_action('admin_enqueue_scripts', [$this, 'enqueue_styles']);
 		add_action('load-toplevel_page_file-version-manager', [$this, 'setup_list_table']);
-		// add_filter( 'set-screen-option', [ $this, 'set_screen_option' ], 10, 3 );
 	}
 
 	public function add_admin_menu()
@@ -45,29 +43,6 @@ class AdminPage
 			array($this, 'display_admin_page')
 		);
 	}
-
-	// public function add_screen_options() {
-	// 	add_screen_option( 'per_page', array(
-	// 		'label' => 'Files per page',
-	// 		'default' => 20,
-	// 		'option' => 'fvm_files_per_page',
-	// 	) );
-	// }
-
-	// public function set_screen_option( $status, $option, $value ) {
-	// 	if ( 'fvm_files_per_page' == $option ) {
-	// 		return $value;
-	// 	}
-	// 	return $status;
-	// }
-
-	// public function modify_screen_options( $columns ) {
-	// 	// Remove 'file_name' from the screen options
-	// 	if ( isset( $columns['file_name'] ) ) {
-	// 		unset( $columns['file_name'] );
-	// 	}
-	// 	return $columns;
-	// }
 
 	public function setup_list_table()
 	{
@@ -99,6 +74,9 @@ class AdminPage
 	 */
 	public function display_admin_page()
 	{
+		$this->setup_list_table();
+		$this->handle_bulk_actions();
+
 		ob_start();
 
 		$this->handle_file_upload();
@@ -116,20 +94,6 @@ class AdminPage
 				echo "<div class='notice $status is-dismissible'><p>$message</p></div>";
 			}
 			?>
-			<!-- 
-			<div id="fvm-upload-container" class="fvm-upload-container">
-				<form method="post" enctype="multipart/form-data" id="fvm-upload-form">
-					<?php // wp_nonce_field('fvm_file_upload', 'fvm_file_upload_nonce'); ?>
-					<div class="fvm-dropzone">
-						<p id="fvm-dropzone-text">Drag & drop files here or click to select</p>
-						<p id="fvm-file-name" style="display: none;"></p>
-						<input type="file" name="file" id="fvm-file-input" style="display: none;" required>
-						<button type="button" id="fvm-select-file" class="button">Select File</button>
-						<input type="submit" name="fvm_upload_file" id="fvm-upload-button" value="Upload File"
-							class="button button-primary" style="display: none;">
-					</div>
-				</form>
-			</div> -->
 
 			<div id="fvm-upload-container" class="fvm-upload-container">
 				<form method="post" enctype="multipart/form-data" id="fvm-upload-form">
