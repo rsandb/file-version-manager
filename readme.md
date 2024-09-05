@@ -1,4 +1,4 @@
-# File Version Manager
+# WP File Version Manager
 
 File Version Manager is a WordPress plugin that allows you to conveniently manage file versions. It uploads files to a custom directory and allows for easy updating without having to change links everywhere.
 
