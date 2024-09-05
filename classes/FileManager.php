@@ -3,24 +3,23 @@ namespace LVAI\FileVersionManager;
 
 #todo: fix the file scan: currently the default directory shows all files, not just the custom folder
 
-class FileManager
-{
+class FileManager {
 	private $upload_dir;
+	private $custom_folder;
 	private $wpdb;
 	private $table_name;
 
-	public function __construct(\wpdb $wpdb)
-	{
+	public function __construct( \wpdb $wpdb ) {
 		$this->wpdb = $wpdb;
-		$this->table_name = $wpdb->prefix . Constants::TABLE_NAME;
+		$this->table_name = $wpdb->prefix . Constants::FILE_TABLE_NAME;
+		$this->custom_folder = get_option( 'fvm_custom_directory', 'file-version-manager' );
 		$this->set_upload_dir();
 	}
 
-	public function init()
-	{
-		add_action('admin_init', [$this, 'scan_files']);
-		add_action('admin_post_update_file', [$this, 'handle_file_update']);
-		add_action('admin_post_nopriv_update_file', [$this, 'handle_file_update']);
+	public function init() {
+		add_action( 'admin_init', [ $this, 'scan_files' ] );
+		add_action( 'admin_post_update_file', [ $this, 'handle_file_update' ] );
+		add_action( 'admin_post_nopriv_update_file', [ $this, 'handle_file_update' ] );
 	}
 
 	/**
@@ -28,12 +27,11 @@ class FileManager
 	 * 
 	 * @return void
 	 */
-	private function set_upload_dir()
-	{
+	private function set_upload_dir() {
 		$upload_dir = wp_upload_dir();
-		$custom_folder = get_option('fvm_custom_directory', 'file-version-manager');
-		$this->upload_dir = trailingslashit($upload_dir['basedir']) . trim($custom_folder, '/');
-		wp_mkdir_p($this->upload_dir);
+		$custom_folder = get_option( 'fvm_custom_directory', 'file-version-manager' );
+		$this->upload_dir = 'wp-content/uploads/' . trim( $custom_folder, '/' );
+		wp_mkdir_p( ABSPATH . $this->upload_dir );
 	}
 
 	/**
@@ -42,10 +40,9 @@ class FileManager
 	 * @param array $uploads Array containing upload directory information.
 	 * @return array Modified array with customized upload directory path.
 	 */
-	public function custom_upload_dir($uploads)
-	{
-		$custom_folder = get_option('fvm_custom_directory', 'file-version-manager');
-		$uploads['subdir'] = '/' . trim($custom_folder, '/');
+	public function custom_upload_dir( $uploads ) {
+		$custom_folder = get_option( 'fvm_custom_directory', 'file-version-manager' );
+		$uploads['subdir'] = '/' . trim( $custom_folder, '/' );
 		$uploads['path'] = $uploads['basedir'] . $uploads['subdir'];
 		$uploads['url'] = $uploads['baseurl'] . $uploads['subdir'];
 		return $uploads;
@@ -59,44 +56,60 @@ class FileManager
 	 * 
 	 * @return void
 	 */
-	public function scan_files()
-	{
-		global $wpdb;
-		$table_name = $wpdb->prefix . Constants::TABLE_NAME;
+	public function scan_files() {
+		$db_files = $this->wpdb->get_results( "SELECT id, file_path FROM {$this->table_name}", ARRAY_A );
+		$db_file_paths = array_column( $db_files, 'file_path', 'id' );
 
-		// Get all files from the database
-		$db_files = $wpdb->get_results("SELECT * FROM $table_name", ARRAY_A);
-		$db_file_paths = wp_list_pluck($db_files, 'file_path');
+		$existing_files = $this->scan_directory( $this->upload_dir );
 
-		// Scan the directory recursively
-		$existing_files = $this->scan_directory($this->upload_dir);
+		$to_insert = array_diff( $existing_files, $db_file_paths );
+		$to_delete = array_diff( $db_file_paths, $existing_files );
 
-		foreach ($existing_files as $file_path) {
-			// Check if the file already exists in the database
-			$key = array_search($file_path, $db_file_paths);
-			if ($key === false) {
-				// New file, add to database
-				$file_url = home_url('download/' . basename($file_path));
-				$file_size = filesize($file_path);
-				$file_type = wp_check_filetype($file_path)['type'];
-				$this->update_file_metadata(
-					basename($file_path),
-					$file_path,
-					$file_url,
-					$file_size,
-					$file_type,
-					'1.0',
-					current_time('mysql'),
-					current_time('mysql')
-				);
-			}
+		$this->batch_insert_files( $to_insert );
+		$this->batch_delete_files( array_keys( $to_delete ) );
+	}
+
+	private function batch_insert_files( $file_paths ) {
+		if ( empty( $file_paths ) ) {
+			return; // No files to insert, so we exit early
 		}
 
-		// Remove entries from the database for files that no longer exist
-		foreach ($db_files as $db_file) {
-			if (!in_array($db_file['file_path'], $existing_files)) {
-				$wpdb->delete($table_name, ['id' => $db_file['id']], ['%d']);
-			}
+		$values = [];
+		$placeholders = [];
+		foreach ( $file_paths as $file_path ) {
+			$absolute_path = ABSPATH . $file_path;
+			$file_size = file_exists( $absolute_path ) ? filesize( $absolute_path ) : 0;
+			$file_type = wp_check_filetype( $absolute_path )['ext'];
+			$current_time = current_time( 'mysql' );
+
+			$values = array_merge( $values, [ 
+				basename( $file_path ),
+				null, // file_display_name
+				$file_path,
+				home_url( 'download/' . basename( $file_path ) ),
+				$file_size,
+				$file_type,
+				'1.0',
+				$current_time,
+				$current_time,
+			] );
+			$placeholders[] = "(%s, %s, %s, %s, %d, %s, %s, %s, %s)";
+		}
+
+		if ( ! empty( $values ) ) {
+			$query = "INSERT INTO {$this->table_name} 
+					  (file_name, file_display_name, file_path, file_url, file_size, file_type, version, date_uploaded, date_modified) 
+					  VALUES " . implode( ', ', $placeholders );
+
+			$this->wpdb->query( $this->wpdb->prepare( $query, $values ) );
+		}
+	}
+
+	private function batch_delete_files( $file_ids ) {
+		if ( ! empty( $file_ids ) ) {
+			$placeholders = implode( ',', array_fill( 0, count( $file_ids ), '%d' ) );
+			$query = "DELETE FROM {$this->table_name} WHERE id IN ($placeholders)";
+			$this->wpdb->query( $this->wpdb->prepare( $query, $file_ids ) );
 		}
 	}
 
@@ -107,13 +120,17 @@ class FileManager
 	 * @param string $dir
 	 * @return array
 	 */
-	private function scan_directory($dir)
-	{
+	private function scan_directory( $dir ) {
 		$files = [];
-		$iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($dir));
-		foreach ($iterator as $file) {
-			if ($file->isFile() && substr($file->getFilename(), 0, 1) !== '.') {
-				$files[] = $file->getPathname();
+		$absolute_dir = ABSPATH . ltrim( $dir, '/' );
+		if ( ! is_dir( $absolute_dir ) ) {
+			error_log( "Directory does not exist: " . $absolute_dir );
+			return $files;
+		}
+		$iterator = new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( $absolute_dir ) );
+		foreach ( $iterator as $file ) {
+			if ( $file->isFile() && substr( $file->getFilename(), 0, 1 ) !== '.' ) {
+				$files[] = str_replace( ABSPATH, '', $file->getPathname() );
 			}
 		}
 		return $files;
@@ -127,21 +144,20 @@ class FileManager
 	 * @param string $version
 	 * @return int|false
 	 */
-	public function upload_file($file, $file_id = null, $version = '1.0')
-	{
-		add_filter('upload_dir', [$this, 'custom_upload_dir']);
-		$movefile = wp_handle_upload($file, ['test_form' => false]);
-		remove_filter('upload_dir', [$this, 'custom_upload_dir']);
+	public function upload_file( $file, $file_id = null, $version = '1.0' ) {
+		add_filter( 'upload_dir', [ $this, 'custom_upload_dir' ] );
+		$movefile = wp_handle_upload( $file, [ 'test_form' => false ] );
+		remove_filter( 'upload_dir', [ $this, 'custom_upload_dir' ] );
 
-		if ($movefile && !isset($movefile['error'])) {
-			$file_name = basename($movefile['file']);
-			$file_path = $movefile['file'];
-			$file_url = home_url('download/' . $file_name);
-			$file_type = $movefile['type'];
-			$file_size = filesize($file_path);
-			$current_time = current_time('mysql');
+		if ( $movefile && ! isset( $movefile['error'] ) ) {
+			$file_name = basename( $movefile['file'] );
+			$file_path = str_replace( ABSPATH, '', $movefile['file'] );
+			$file_url = home_url( 'download/' . $file_name );
+			$file_type = wp_check_filetype( ABSPATH . $file_path )['ext'];
+			$file_size = filesize( ABSPATH . $file_path );
+			$current_time = current_time( 'mysql' );
 
-			$metadata = [
+			$metadata = [ 
 				'file_name' => $file_name,
 				'file_path' => $file_path,
 				'file_url' => $file_url,
@@ -151,11 +167,11 @@ class FileManager
 				'date_modified' => $current_time,
 			];
 
-			if ($file_id) {
-				$this->wpdb->update($this->table_name, $metadata, ['id' => $file_id]);
+			if ( $file_id ) {
+				$this->wpdb->update( $this->table_name, $metadata, [ 'id' => $file_id ] );
 			} else {
 				$metadata['date_uploaded'] = $current_time;
-				$this->wpdb->insert($this->table_name, $metadata);
+				$this->wpdb->insert( $this->table_name, $metadata );
 				$file_id = $this->wpdb->insert_id;
 			}
 
@@ -173,78 +189,77 @@ class FileManager
 	 * @param string $version
 	 * @return bool
 	 */
-	public function update_file($file_id, $new_file, $new_version)
-	{
+	public function update_file( $file_id, $new_file, $new_version, $file_display_name ) {
 		global $wpdb;
 
-		$table_name = $wpdb->prefix . Constants::TABLE_NAME;
+		$table_name = $wpdb->prefix . Constants::FILE_TABLE_NAME;
 
-		error_log("Entering update_file method for file ID: $file_id");
-		error_log("New version: " . $new_version);
-		error_log("New file: " . print_r($new_file, true));
+		$existing_file = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $table_name WHERE id = %d", $file_id ), ARRAY_A );
 
-		$existing_file = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table_name WHERE id = %d", $file_id), ARRAY_A);
-
-		if (!$existing_file) {
-			error_log("File not found for ID: $file_id");
+		if ( ! $existing_file ) {
+			error_log( "File not found for ID: $file_id" );
 			return false;
 		}
-
-		error_log("Existing file: " . print_r($existing_file, true));
 
 		$update_data = array();
 		$update_format = array();
 
 		// Check if auto-increment version is enabled
-		$auto_increment_version = get_option('fvm_auto_increment_version', 1);
+		$auto_increment_version = get_option( 'fvm_auto_increment_version', 1 );
 
-		// Update version if provided or auto-increment if enabled
-		if (!empty($new_version)) {
-			$update_data['version'] = $new_version;
-		} elseif ($auto_increment_version && $new_file) {
-			$current_version = $existing_file['version'];
-			$update_data['version'] = $this->increment_version($current_version);
+		// Update file display name if provided
+		if ( ! empty( $file_display_name ) ) {
+			$update_data['file_display_name'] = $file_display_name;
 		}
 
-		if (isset($update_data['version'])) {
+		// Update version if provided or auto-increment if enabled
+		if ( ! empty( $new_version ) ) {
+			$update_data['version'] = $new_version;
+		} elseif ( $auto_increment_version && $new_file ) {
+			$current_version = $existing_file['version'];
+			$update_data['version'] = $this->increment_version( $current_version );
+		}
+
+		if ( isset( $update_data['version'] ) ) {
 			$update_format[] = '%s';
-			error_log("Updating version to: " . $update_data['version']);
+			error_log( "Updating version to: " . $update_data['version'] );
 		}
 
 		// Handle file upload if a new file is provided
-		if ($new_file && !empty($new_file['tmp_name'])) {
-			error_log("New file uploaded. Processing...");
+		if ( $new_file && ! empty( $new_file['tmp_name'] ) ) {
 
-			// Check if the file type is allowed by WordPress
-			$check_file = wp_check_filetype_and_ext($new_file['tmp_name'], $new_file['name']);
-			if (!$check_file['ext'] || !$check_file['type']) {
-				error_log("File type not allowed: " . $new_file['type']);
+			$check_file = wp_check_filetype_and_ext( $new_file['tmp_name'], $new_file['name'] );
+			if ( ! $check_file['ext'] || ! $check_file['type'] ) {
 				return false;
 			}
 
 			// Delete the old file
-			$old_file_path = $existing_file['file_path'];
-			if (file_exists($old_file_path)) {
-				if (unlink($old_file_path)) {
-					error_log("Old file deleted: " . $old_file_path);
+			$old_file_path = ABSPATH . $existing_file['file_path'];
+
+			if ( file_exists( $old_file_path ) ) {
+				if ( unlink( $old_file_path ) ) {
+					error_log( "Old file deleted: " . $old_file_path );
 				} else {
-					error_log("Failed to delete old file: " . $old_file_path);
+					error_log( "Failed to delete old file: " . $old_file_path );
 				}
 			} else {
-				error_log("Old file not found: " . $old_file_path);
+				error_log( "Old file not found: " . $old_file_path );
 			}
 
 			// Upload the new file to the custom directory
-			add_filter('upload_dir', [$this, 'custom_upload_dir']);
-			$movefile = wp_handle_upload($new_file, ['test_form' => false]);
-			remove_filter('upload_dir', [$this, 'custom_upload_dir']);
+			add_filter( 'upload_dir', [ $this, 'custom_upload_dir' ] );
+			$movefile = wp_handle_upload( $new_file, [ 'test_form' => false ] );
+			remove_filter( 'upload_dir', [ $this, 'custom_upload_dir' ] );
 
-			if ($movefile && !isset($movefile['error'])) {
-				$new_file_name = basename($movefile['file']);
-				$new_file_path = $movefile['file'];
-				$file_url = home_url('download/' . $new_file_name);
-				$file_type = $movefile['type'];
-				$file_size = filesize($new_file_path);
+			if ( $movefile && ! isset( $movefile['error'] ) ) {
+				$new_file_name = basename( $movefile['file'] );
+				$new_file_path = str_replace( ABSPATH, '', $movefile['file'] );
+				$file_url = home_url( 'download/' . $new_file_name );
+				$file_type = wp_check_filetype( ABSPATH . $new_file_path )['ext'];
+				$file_size = filesize( ABSPATH . $new_file_path );
+
+				error_log( "New file path: " . $new_file_path );
+				error_log( "File type before update: " . $file_type );
 
 				$update_data['file_name'] = $new_file_name;
 				$update_data['file_path'] = $new_file_path;
@@ -252,51 +267,48 @@ class FileManager
 				$update_data['file_type'] = $file_type;
 				$update_data['file_size'] = $file_size;
 
-				$update_format = array_merge($update_format, array('%s', '%s', '%s', '%s', '%d'));
-
-				error_log("New file data: " . print_r($update_data, true));
+				$update_format = array_merge( $update_format, array( '%s', '%s', '%s', '%s', '%d' ) );
 			} else {
-				error_log("Failed to move uploaded file for file ID: $file_id");
+				error_log( "File move failed: " . print_r( $movefile, true ) );
 				return false;
 			}
-		} else {
-			error_log("No new file uploaded or upload error occurred");
 		}
 
-		$update_data['date_modified'] = current_time('mysql');
+		$update_data['date_modified'] = current_time( 'mysql' );
 		$update_format[] = '%s';
 
-		error_log("Final update data: " . print_r($update_data, true));
+		error_log( "Update data: " . print_r( $update_data, true ) );
+		error_log( "Update format: " . print_r( $update_format, true ) );
 
 		$result = $wpdb->update(
 			$table_name,
 			$update_data,
-			array('id' => $file_id),
-			$update_format,
-			array('%d')
+			array( 'id' => $file_id ),
+			null,
+			array( '%d' )
 		);
 
-		if ($result === false) {
-			error_log("Database update failed for file ID: $file_id");
-			if ($this->wpdb) {
-				error_log("Database error: " . $this->wpdb->last_error);
-			}
+		if ( $result === false ) {
+			error_log( "Database update failed: " . $wpdb->last_error );
 			return false;
 		}
 
-		error_log("File updated successfully for ID: $file_id");
+		// Verify the update
+		$updated_file = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $table_name WHERE id = %d", $file_id ) );
+		error_log( "Updated file data: " . print_r( $updated_file, true ) );
+
 		return true;
 	}
 
-	private function update_file_metadata($file_name, $file_path, $file_url, $file_size, $file_type, $version, $date_uploaded, $date_modified)
-	{
+	private function update_file_metadata( $file_name, $file_display_name, $file_path, $file_url, $file_size, $file_type, $version, $date_uploaded, $date_modified ) {
 		global $wpdb;
-		$table_name = $wpdb->prefix . Constants::TABLE_NAME;
+		$table_name = $wpdb->prefix . Constants::FILE_TABLE_NAME;
 
 		$result = $wpdb->insert(
 			$table_name,
 			array(
 				'file_name' => $file_name,
+				'file_display_name' => $file_display_name,
 				'file_path' => $file_path,
 				'file_url' => $file_url,
 				'file_size' => $file_size,
@@ -305,11 +317,11 @@ class FileManager
 				'date_uploaded' => $date_uploaded,
 				'date_modified' => $date_modified,
 			),
-			array('%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s')
+			array( '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s' )
 		);
 
-		if ($result === false) {
-			error_log('Database insertion failed: ' . $wpdb->last_error);
+		if ( $result === false ) {
+			error_log( 'Database insertion failed: ' . $wpdb->last_error );
 		}
 	}
 
@@ -319,10 +331,9 @@ class FileManager
 	 * @param string $version
 	 * @return string
 	 */
-	private function increment_version($version)
-	{
-		$parts = explode('.', $version);
-		$major = intval($parts[0]);
+	private function increment_version( $version ) {
+		$parts = explode( '.', $version );
+		$major = intval( $parts[0] );
 		$major++;
 		return $major . '.0';
 	}
@@ -333,9 +344,8 @@ class FileManager
 	 * @param int $file_id
 	 * @return object|false
 	 */
-	public function get_file($file_id)
-	{
-		return $this->wpdb->get_row($this->wpdb->prepare("SELECT * FROM {$this->table_name} WHERE id = %d", $file_id));
+	public function get_file( $file_id ) {
+		return $this->wpdb->get_row( $this->wpdb->prepare( "SELECT * FROM {$this->table_name} WHERE id = %d", $file_id ) );
 	}
 
 	/**
@@ -344,14 +354,14 @@ class FileManager
 	 * @param int $file_id
 	 * @return bool
 	 */
-	public function delete_file($file_id)
-	{
-		$file = $this->get_file($file_id);
-		if ($file) {
-			if (file_exists($file->file_path)) {
-				unlink($file->file_path);
+	public function delete_file( $file_id ) {
+		$file = $this->get_file( $file_id );
+		if ( $file ) {
+			$absolute_path = ABSPATH . $file->file_path;
+			if ( file_exists( $absolute_path ) ) {
+				unlink( $absolute_path );
 			}
-			return $this->wpdb->delete($this->table_name, ['id' => $file_id], ['%d']);
+			return $this->wpdb->delete( $this->table_name, [ 'id' => $file_id ], [ '%d' ] );
 		}
 		return false;
 	}

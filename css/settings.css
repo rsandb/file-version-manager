@@ -69,15 +69,20 @@
     margin-top: 20px;
 }
 
-.fvm_input-group input[type="file"] {
-    width: 100%;
-}
-
-.fvm_settings-section-content h3 {
+.fvm_field-group h3 {
     color: #22272b;
     font-size: 14px;
     font-weight: 600;
-    margin: 0;
+    margin-top: 0;
+    margin-bottom: 6px;
+}
+
+.fvm_input-group p {
+    margin-top: 0;
+}
+
+.fvm_input-group input[type="file"] {
+    width: 100%;
 }
 
 .fvm_settings-container .submit {

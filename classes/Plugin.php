@@ -4,39 +4,41 @@ namespace LVAI\FileVersionManager;
 
 class Plugin {
 	private $file_manager;
-	private $admin_page;
+	private $file_page;
+	private $category_page;
 	private $settings_page;
 	private $shortcode;
 	private $update_ids;
 
 	public function __construct(
 		FileManager $file_manager,
-		AdminPage $admin_page,
+		FilePage $file_page,
+		CategoryPage $category_page,
 		SettingsPage $settings_page,
 		Shortcode $shortcode
 	) {
 		$this->file_manager = $file_manager;
-		$this->admin_page = $admin_page;
+		$this->file_page = $file_page;
+		$this->category_page = $category_page;
 		$this->settings_page = $settings_page;
 		$this->shortcode = $shortcode;
 	}
 
 	public function init() {
 		add_action( 'plugins_loaded', [ $this, 'setup' ] );
-		// Add rewrite rules
 		add_action( 'init', [ $this, 'add_rewrite_rules' ] );
-		// Flush rewrite rules if necessary
 		add_action( 'init', [ $this, 'maybe_flush_rewrite_rules' ] );
 	}
 
 	public function setup() {
 		$this->file_manager->init();
-		$this->admin_page->init();
+		$this->file_page->init();
+		$this->category_page->init();
 		$this->settings_page->init();
 		$this->shortcode->init();
 
 		add_action( 'template_redirect', [ $this, 'handle_download' ] );
-		add_filter( 'admin_footer_text', [ $this, 'custom_admin_footer_text' ] );
+		add_filter( 'admin_footer_text', [ $this, 'custom_admin_footer_text' ], 9999 );
 	}
 
 	public function add_rewrite_rules() {
@@ -64,38 +66,21 @@ class Plugin {
 		if ( get_query_var( 'fvm_download' ) == 1 ) {
 			$file_name = get_query_var( 'fvm_file' );
 			global $wpdb;
-			$table_name = $wpdb->prefix . Constants::TABLE_NAME;
+			$table_name = $wpdb->prefix . Constants::FILE_TABLE_NAME;
 			$file = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $table_name WHERE file_name = %s", $file_name ) );
 
 			if ( $file ) {
 				$file_path = $file->file_path;
 				if ( file_exists( $file_path ) ) {
 					$file_type = $file->file_type;
-					header( 'Content-Type: ' . $file_type );
+					$mime_type = $this->get_mime_type( $file_type );
+					header( 'Content-Type: ' . $mime_type );
 
 					// Check if the file type is suitable for inline display
 					$inline_types = array(
-						'application/pdf',
-						'text/plain',
-						'text/html',
-						'text/xml',
-						'text/css',
-						'text/javascript',
-						'application/javascript',
-						'application/json',
-						'image/jpeg',
-						'image/png',
-						'image/gif',
-						'image/svg+xml',
-						'image/webp',
-						'image/bmp',
-						'image/tiff',
-						'audio/mpeg',
-						'audio/ogg',
-						'audio/wav',
-						'video/mp4',
-						'video/webm',
-						'video/ogg',
+						'pdf', 'txt', 'html', 'xml', 'css', 'js', 'json',
+						'jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'bmp', 'tiff',
+						'mp3', 'ogg', 'wav', 'mp4', 'webm',
 					);
 					if ( in_array( $file_type, $inline_types ) ) {
 						header( 'Content-Disposition: inline; filename="' . $file_name . '"' );
@@ -114,6 +99,33 @@ class Plugin {
 				exit;
 			}
 		}
+	}
+
+	private function get_mime_type( $file_type ) {
+		$mime_types = array(
+			'pdf' => 'application/pdf',
+			'txt' => 'text/plain',
+			'html' => 'text/html',
+			'xml' => 'text/xml',
+			'css' => 'text/css',
+			'js' => 'application/javascript',
+			'json' => 'application/json',
+			'jpg' => 'image/jpeg',
+			'jpeg' => 'image/jpeg',
+			'png' => 'image/png',
+			'gif' => 'image/gif',
+			'svg' => 'image/svg+xml',
+			'webp' => 'image/webp',
+			'bmp' => 'image/bmp',
+			'tiff' => 'image/tiff',
+			'mp3' => 'audio/mpeg',
+			'ogg' => 'audio/ogg',
+			'wav' => 'audio/wav',
+			'mp4' => 'video/mp4',
+			'webm' => 'video/webm',
+		);
+
+		return isset( $mime_types[ $file_type ] ) ? $mime_types[ $file_type ] : 'application/octet-stream';
 	}
 
 	public function custom_admin_footer_text( $text ) {
@@ -139,6 +151,7 @@ class Plugin {
 				: trailingslashit( $upload_dir['basedir'] ) . 'file-version-manager';
 			return "Modifying files in this directory: " . $current_dir;
 		}
+
 		return $text;
 	}
 

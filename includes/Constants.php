@@ -2,9 +2,8 @@
 
 namespace LVAI\FileVersionManager;
 
-class Constants
-{
-	const VERSION = '0.8.0';
+class Constants {
 	const PLUGIN_DIR = __DIR__ . '/../';
-	const TABLE_NAME = 'fvm_metadata';
+	const FILE_TABLE_NAME = 'fvm_files';
+	const CAT_TABLE_NAME = 'fvm_categories';
 }

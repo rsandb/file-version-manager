@@ -4,11 +4,19 @@ namespace LVAI\FileVersionManager;
 
 class Deactivate {
 	public static function deactivate() {
-		// global $wpdb;
-		// $table_name = $wpdb->prefix . Constants::TABLE_NAME;
 
-		// // Drop the custom table
-		// $wpdb->query( "DROP TABLE IF EXISTS $table_name" );
+		global $wpdb;
+		$table_name = $wpdb->prefix . Constants::FILE_TABLE_NAME;
+		$category_table_name = $wpdb->prefix . Constants::CAT_TABLE_NAME;
+
+		// Drop the custom table
+		$wpdb->query( "DROP TABLE IF EXISTS $table_name" );
+		$wpdb->query( "DROP TABLE IF EXISTS $category_table_name" );
+
+		// Delete settings
+		// delete_option( 'fvm_custom_directory' );
+		// delete_option( 'fvm_debug_logs' );
+		// delete_option( 'fvm_auto_increment_version' );
 
 		flush_rewrite_rules();
 	}

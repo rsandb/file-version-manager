@@ -1,6 +1,8 @@
 <?php
 namespace LVAI\FileVersionManager;
 
+#todo: create a modal template for all files instead of creating a new modal for each file
+
 if ( ! class_exists( 'WP_List_Table' ) ) {
 	require_once( ABSPATH . 'wp-admin/includes/class-wp-list-table.php' );
 }
@@ -19,7 +21,7 @@ class FileListTable extends \WP_List_Table {
 
 	private function get_table_name() {
 		global $wpdb;
-		return $wpdb->prefix . Constants::TABLE_NAME;
+		return $wpdb->prefix . Constants::FILE_TABLE_NAME;
 	}
 
 	public function prepare_items() {
@@ -72,7 +74,7 @@ class FileListTable extends \WP_List_Table {
 
 		$search_query = '';
 		if ( ! empty( $search ) ) {
-			$search_query = $wpdb->prepare( "WHERE file_name LIKE %s", '%' . $wpdb->esc_like( $search ) . '%' );
+			$search_query = $wpdb->prepare( "WHERE file_name LIKE %s OR file_display_name LIKE %s", '%' . $wpdb->esc_like( $search ) . '%', '%' . $wpdb->esc_like( $search ) . '%' );
 		}
 
 		$query = "SELECT * FROM $table_name $search_query ORDER BY $orderby $order LIMIT %d OFFSET %d";
@@ -100,7 +102,7 @@ class FileListTable extends \WP_List_Table {
 
 		$search_query = '';
 		if ( ! empty( $search ) ) {
-			$search_query = $wpdb->prepare( "WHERE file_name LIKE %s", '%' . $wpdb->esc_like( $search ) . '%' );
+			$search_query = $wpdb->prepare( "WHERE file_name LIKE %s OR file_display_name LIKE %s", '%' . $wpdb->esc_like( $search ) . '%', '%' . $wpdb->esc_like( $search ) . '%' );
 		}
 
 		return $wpdb->get_var( "SELECT COUNT(*) FROM $table_name $search_query" );
@@ -165,9 +167,12 @@ class FileListTable extends \WP_List_Table {
 	}
 
 	public function column_default( $item, $column_name ) {
+		// $simplified_file_types = include plugin_dir_path( __FILE__ ) . '../includes/FileTypes.php';
+
 		switch ( $column_name ) {
 			case 'file_name':
 			case 'file_type':
+			// return esc_html( isset( $simplified_file_types[ $item['file_type'] ] ) ? $simplified_file_types[ $item['file_type'] ] : 'Other' );
 			case 'version':
 			case 'date_modified':
 				return $item[ $column_name ];
@@ -205,7 +210,7 @@ class FileListTable extends \WP_List_Table {
 		];
 
 		$file_icon = $this->get_file_icon_class( $item['file_type'] );
-		$file_name = sprintf( '<div style="display: flex; gap: 6px;"><div class="dashicons %s"></div> <div>%s</div></div>', $file_icon, $item['file_name'] );
+		$file_name = sprintf( '<div style="display: flex; gap: 6px;"><div class="dashicons %s"></div> <div>%s</div></div>', $file_icon, ! empty( $item['file_display_name'] ) ? $item['file_display_name'] : $item['file_name'] );
 
 		return sprintf(
 			'<div class="file-row" id="file-row-%d">
@@ -227,6 +232,13 @@ class FileListTable extends \WP_List_Table {
 					<?php wp_nonce_field( 'edit_file_' . $file_id, 'edit_file_nonce' ); ?>
 					<input type="hidden" name="file_id" value="<?php echo esc_attr( $file_id ); ?>">
 					<table class="form-table">
+						<tr>
+							<th scope="row"><label for="file_display_name">File Display Name</label></th>
+							<td>
+								<input type="text" name="file_display_name" id="file_display_name"
+									value="<?php echo esc_attr( $item['file_display_name'] ); ?>" class="regular-text">
+							</td>
+						</tr>
 						<tr>
 							<th scope="row"><label for="file_name">File Name</label></th>
 							<td>
@@ -284,16 +296,20 @@ class FileListTable extends \WP_List_Table {
 
 	private function get_file_icon_class( $file_type ) {
 		$icon_map = [ 
-			'image' => 'dashicons-format-image',
-			'audio' => 'dashicons-format-audio',
-			'video' => 'dashicons-format-video',
-			'application/pdf' => 'dashicons-pdf',
+			'jpg' => 'dashicons-format-image',
+			'png' => 'dashicons-format-image',
+			'webp' => 'dashicons-format-image',
+			'svg' => 'dashicons-format-image',
+			'gif' => 'dashicons-format-image',
+			'mp3' => 'dashicons-format-audio',
+			'mp4' => 'dashicons-format-video',
+			'pdf' => 'dashicons-pdf',
 			'text' => 'dashicons-text',
-			'application/msword' => 'dashicons-media-document',
-			'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'dashicons-media-document',
-			'application/vnd.ms-excel' => 'dashicons-media-spreadsheet',
-			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => 'dashicons-media-spreadsheet',
-			'application/zip' => 'dashicons-media-archive',
+			'doc' => 'dashicons-media-document',
+			'docx' => 'dashicons-media-document',
+			'xls' => 'dashicons-media-spreadsheet',
+			'xlsx' => 'dashicons-media-spreadsheet',
+			'zip' => 'dashicons-media-archive',
 		];
 
 		$type_parts = explode( '/', $file_type );

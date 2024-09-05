@@ -28,15 +28,15 @@
 }
 
 .alternate,
-.striped>tbody> :nth-child(odd),
-ul.striped> :nth-child(odd) {
+.striped > tbody > :nth-child(odd),
+ul.striped > :nth-child(odd) {
     background-color: #f6f7f7;
 }
 
 .edit-modal {
     display: none;
     position: fixed;
-    z-index: 1000;
+    z-index: 160000;
     left: 0;
     top: 0;
     width: 100%;
@@ -96,7 +96,7 @@ h2.fvm-upload-instructions {
 .fvm-dropzone p {
     font-size: 13px;
     line-height: 1.5;
-    margin: .5em 0;
+    margin: 0.5em 0;
 }
 
 #fvm-file-name {

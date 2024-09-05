@@ -4,7 +4,7 @@ namespace LVAI\FileVersionManager;
 class SettingsPage {
 	private $update_ids;
 
-	public function __construct( UpdateIDs $update_ids ) {
+	public function __construct( MigrateFilebasePro $update_ids ) {
 		$this->update_ids = $update_ids;
 	}
 
@@ -13,11 +13,16 @@ class SettingsPage {
 		add_action( 'admin_init', [ $this, 'register_settings' ] );
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_styles' ] );
 		add_action( 'admin_notices', [ $this, 'display_settings_updated_notice' ] );
+		add_action( 'admin_notices', [ $this, 'display_admin_notification' ] );
 
 		add_action( 'wp_ajax_export_wpfilebase_files', [ $this, 'ajax_export_wpfilebase_files' ] );
 		add_action( 'wp_ajax_get_export_progress', [ $this, 'ajax_get_export_progress' ] );
 		add_action( 'admin_post_fvm_update_ids', [ $this, 'handle_csv_upload' ] );
 		add_action( 'admin_post_fvm_clear_log', [ $this, 'handle_clear_log' ] );
+		add_action( 'admin_post_fvm_import_categories', [ $this, 'handle_category_import' ] );
+		add_action( 'admin_post_fvm_clear_log_categories', [ $this, 'handle_clear_log_categories' ] );
+		add_action( 'admin_post_fvm_import_wpfilebase', [ $this, 'handle_wpfilebase_import' ] );
+		add_action( 'admin_post_fvm_clear_log_wpfilebase', [ $this, 'handle_clear_log_wpfilebase' ] );
 	}
 
 	public function add_settings_page() {
@@ -61,16 +66,28 @@ class SettingsPage {
 	}
 
 	private function redirect_with_notification( $status, $message ) {
-		wp_redirect( add_query_arg(
-			[ 
-				'page' => 'fvm_settings',
-				'tab' => 'wp-filebase-pro',
-				'notification' => $status,
-				'message' => urlencode( $message ),
-			],
-			admin_url( 'admin.php' )
-		) );
+		// Store the message in a transient
+		set_transient( 'fvm_admin_notification', [ 
+			'status' => $status,
+			'message' => $message,
+		], 60 );
+
+		wp_safe_redirect( admin_url( 'admin.php?page=fvm_settings&tab=wp-filebase-pro' ) );
 		exit;
+	}
+
+	public function display_admin_notification() {
+		$notification = get_transient( 'fvm_admin_notification' );
+		if ( $notification ) {
+			$status = $notification['status'];
+			$message = $notification['message'];
+			?>
+			<div class="notice notice-<?php echo $status === 'success' ? 'success' : 'error'; ?> is-dismissible">
+				<p><?php echo nl2br( esc_html( $message ) ); ?></p>
+			</div>
+			<?php
+			delete_transient( 'fvm_admin_notification' );
+		}
 	}
 
 	public function display_settings_updated_notice() {
@@ -136,6 +153,7 @@ class SettingsPage {
 							blank to use the default 'file-version-manager' folder.</small>
 					</div>
 					<div class="fvm_field-group">
+						<h3>Auto-Increment Version</h3>
 						<div class="fvm_input-group">
 							<input type="checkbox" name="fvm_auto_increment_version" value="1" <?php checked( get_option( 'fvm_auto_increment_version', 1 ), 1 ); ?> />
 							<span>Enable Auto-Increment Version</span>
@@ -150,10 +168,11 @@ class SettingsPage {
 				<div class="fvm_settings-section-content">
 					<div class="fvm_field-group">
 						<div class="fvm_input-group">
-							<input type="checkbox" name="fvm_debug_logs" value="1" <?php checked( get_option( 'fvm_debug_logs' ), 1 ); ?> disabled />
+							<input type="checkbox" name="fvm_debug_logs" value="1" <?php checked( get_option( 'fvm_debug_logs' ), 1 ); ?> />
 							<span>Enable debug logs</span>
 						</div>
-						<small class="description">Enable debug logs. (Currently not working)</small>
+						<small class="description">Enable debug logs for migration and other methods in the plugin's
+							settings.</small>
 					</div>
 				</div>
 			</div>
@@ -170,298 +189,123 @@ class SettingsPage {
 	private function render_wp_filebase_pro_tab() {
 		global $wpdb;
 		$files_table = $wpdb->prefix . 'wpfb_files';
+		$cats_table = $wpdb->prefix . 'wpfb_cats';
 		$file_count = $wpdb->get_var( "SELECT COUNT(*) FROM $files_table" );
+		$category_count = $wpdb->get_var( "SELECT COUNT(*) FROM $cats_table" );
+
+		$import_message = get_transient( 'fvm_import_message' );
+		if ( $import_message ) {
+			$this->display_notification( $import_message['status'], $import_message['message'] );
+			delete_transient( 'fvm_import_message' );
+		}
 
 		?>
 		<div class="fvm_settings-section">
-			<h2>Export WP-Filebase Pro Database</h2>
+			<h2>Migrate WP-Filebase Pro Database</h2>
 			<div class="fvm_settings-section-content">
 				<div class="fvm_field-group">
+					<h3>One-Click Migration</h3>
 					<div class="fvm_input-group">
-						<div id="export-progress">
-							<progress id="export-progress-bar" value="0" max="100"></progress>
-							<span id="export-status"></span>
-						</div>
+						<p>
+							There are currently <?php echo esc_html( $category_count ); ?> categories and
+							<?php echo esc_html( $file_count ); ?> files in the WP-Filebase tables.
+							<br>
+							This will affect the files in the custom directory:
+							<?php echo esc_html( get_option( 'fvm_custom_directory', 'file-version-manager' ) ); ?>
+						</p>
 					</div>
-					<small class="description">There are currently <?php echo esc_html( $file_count ); ?> entries in the
-						WP-Filebase
-						files table.</small>
-					<p class="submit">
-						<button id="export-wpfilebase" class="button button-secondary">Export as CSV</button>
-						<span id="export-result"></span>
-					</p>
-				</div>
-			</div>
-		</div>
-
-		<div class="fvm_settings-section">
-			<h2>Update File IDs</h2>
-			<div class="fvm_settings-section-content">
-				<div class="fvm_field-group">
-					<form method="post" enctype="multipart/form-data"
-						action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-						<div class="fvm_input-group">
-							<input type="hidden" name="action" value="fvm_update_ids">
-							<?php wp_nonce_field( 'fvm_update_ids', 'fvm_update_ids_nonce' ); ?>
-							<input type="file" name="csv_file" id="csv_file" accept=".csv" required>
-						</div>
-						<small class="description" style="margin-bottom: 20px;">Upload a CSV file with 'ID' and 'File Name'
-							columns.</small>
-						<?php submit_button( 'Update IDs' ); ?>
+					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+						<input type="hidden" name="action" value="fvm_import_wpfilebase">
+						<?php wp_nonce_field( 'fvm_import_wpfilebase', 'fvm_import_wpfilebase_nonce' ); ?>
+						<?php submit_button( 'Start Migration', 'primary', 'import_wpfilebase' ); ?>
 					</form>
 				</div>
 
 				<?php
-				$log_file = WP_CONTENT_DIR . '/fvm_update_ids.log';
-				if ( file_exists( $log_file ) ) {
-					?>
-					<div class="fvm_log-container">
-						<pre><?php echo esc_html( file_get_contents( $log_file ) ); ?></pre>
-					</div>
-					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-						<input type="hidden" name="action" value="fvm_clear_log">
-						<?php wp_nonce_field( 'fvm_clear_log', 'fvm_clear_log_nonce' ); ?>
-						<?php submit_button( 'Clear Log', 'secondary', 'clear_log', false ); ?>
-					</form>
-					<?php
+				if ( get_option( 'fvm_debug_logs' ) ) {
+					$log_file = WP_CONTENT_DIR . '/fvm_import_wpfilebase.log';
+					if ( file_exists( $log_file ) ) {
+						$log_content = file_get_contents( $log_file );
+						?>
+						<div class="fvm_log-container">
+							<h3>Import Log</h3>
+							<pre><?php echo esc_html( $log_content ); ?></pre>
+						</div>
+						<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+							<input type="hidden" name="action" value="fvm_clear_log_wpfilebase">
+							<?php wp_nonce_field( 'fvm_clear_log_wpfilebase', 'fvm_clear_log_wpfilebase_nonce' ); ?>
+							<?php submit_button( 'Clear Log', 'secondary', 'clear_log_wpfilebase', false ); ?>
+						</form>
+						<?php
+					}
 				}
 				?>
+
 			</div>
 		</div>
 
-		<script>
-			jQuery(document).ready(function ($) {
-				$('#export-wpfilebase').on('click', function () {
-					var $button = $(this);
-					var $progress = $('#export-progress');
-					var $progressBar = $('#export-progress-bar');
-					var $status = $('#export-status');
-					var $result = $('#export-result');
-
-					$button.prop('disabled', true);
-					$result.html('');
-					$progress.show();
-
-					$.ajax({
-						url: ajaxurl,
-						type: 'POST',
-						data: {
-							action: 'export_wpfilebase_files',
-							nonce: '<?php echo wp_create_nonce( 'export_wpfilebase_files_nonce' ); ?>'
-						},
-						success: function (response) {
-							if (response.success) {
-								$button.hide();
-								var $downloadButton = $('<a>', {
-									text: 'Download CSV',
-									href: response.data.file_url,
-									class: 'button button-primary',
-									target: '_blank'
-								});
-								$result.html($downloadButton);
-							} else {
-								$result.html('<div class="error"><p>' + response.data + '</p></div>');
-								$button.prop('disabled', false);
-							}
-						},
-						error: function () {
-							$result.html('<div class="error"><p>An error occurred during the export process.</p></div>');
-							$button.prop('disabled', false);
-						}
-					});
-
-					// Start progress updates
-					var progressInterval = setInterval(function () {
-						$.ajax({
-							url: ajaxurl,
-							type: 'POST',
-							data: {
-								action: 'get_export_progress',
-								nonce: '<?php echo wp_create_nonce( 'get_export_progress_nonce' ); ?>'
-							},
-							success: function (response) {
-								if (response.success) {
-									var progress = response.data.progress;
-									var total = response.data.total;
-									var percentage = Math.round((progress / total) * 100);
-									$progressBar.val(percentage);
-									$status.text(progress + ' / ' + total + ' files processed');
-
-									if (progress >= total) {
-										clearInterval(progressInterval);
-									}
-								}
-							}
-						});
-					}, 100);
-				});
-			});
-		</script>
+		<div class="fvm_settings-section">
+			<h2>Shortcodes</h2>
+			<div class="fvm_settings-section-content">
+				<div class="fvm_field-group">
+					<h3>Update Shortcodes</h3>
+					<div class="fvm_input-group">
+						<p>
+							Update all WP-Filebase Pro shortcodes to File Version Manager's format.
+							<br>
+							<strong>WARNING:</strong> Check to make sure your templates are compatible with File Version
+							Manager's. This may cause some shortcodes to not display properly.
+						</p>
+					</div>
+					<button class="button button-primary" disabled>Update</button>
+				</div>
+			</div>
+		</div>
 		<?php
 	}
 
-	public function ajax_export_wpfilebase_files() {
-		check_ajax_referer( 'export_wpfilebase_files_nonce', 'nonce' );
-
-		// Start the export process
-		$result = $this->export_wpfilebase_files_as_csv();
-
-		if ( is_array( $result ) && isset( $result['success'] ) ) {
-			wp_send_json_success( $result );
-		} else {
-			wp_send_json_error( $result );
-		}
-	}
-
-	public function ajax_get_export_progress() {
-		check_ajax_referer( 'get_export_progress_nonce', 'nonce' );
-
-		$progress = get_transient( 'wpfilebase_export_progress' );
-		$total = get_transient( 'wpfilebase_export_total' );
-
-		if ( $progress !== false && $total !== false ) {
-			wp_send_json_success( [ 
-				'progress' => $progress,
-				'total' => $total,
-			] );
-		} else {
-			wp_send_json_error( 'Progress information not available' );
-		}
-	}
-
-	function export_wpfilebase_files_as_csv() {
-		global $wpdb;
-		$files_table = $wpdb->prefix . 'wpfb_files';
-
-		// Debug: Check if table exists
-		$files_table_exists = $wpdb->get_var( "SHOW TABLES LIKE '$files_table'" ) == $files_table;
-
-		if ( ! $files_table_exists ) {
-			return "Error: WP-Filebase files table not found.";
-		}
-
-		// Count entries in the files table
-		$file_count = $wpdb->get_var( "SELECT COUNT(*) FROM $files_table" );
-
-		if ( $file_count == 0 ) {
-			return "No files found in the WP-Filebase files table.";
-		}
-
-		set_transient( 'wpfilebase_export_total', $file_count, HOUR_IN_SECONDS );
-		set_transient( 'wpfilebase_export_progress', 0, HOUR_IN_SECONDS );
-
-		$upload_dir = wp_upload_dir();
-		$custom_dir = $upload_dir['basedir'] . '/fvm_wpfb-csv';
-
-		// Create the custom directory if it doesn't exist
-		if ( ! file_exists( $custom_dir ) ) {
-			wp_mkdir_p( $custom_dir );
-		}
-
-		$file_name = 'wpfilebase_files_export_' . date( 'Y-m-d_H-i-s' ) . '.csv';
-		$file_path = $custom_dir . '/' . $file_name;
-		$file_url = $upload_dir['baseurl'] . '/fvm_wpfb-csv/' . $file_name;
-
-		$fp = fopen( $file_path, 'w' );
-		if ( $fp === false ) {
-			return "Error: Unable to create CSV file.";
-		}
-
-		// Add the UTF-8 BOM to the output
-		fputs( $fp, $bom = ( chr( 0xEF ) . chr( 0xBB ) . chr( 0xBF ) ) );
-
-		// Output header row
-		fputcsv( $fp, array( 'ID', 'File Name', 'File Path' ) );
-
-		// Process files in batches
-		$batch_size = 100;
-		$offset = 0;
-		$processed = 0;
-
-		while ( $processed < $file_count ) {
-			$query = $wpdb->prepare( "
-				SELECT file_id, file_name, file_path
-				FROM $files_table
-				ORDER BY file_id ASC
-				LIMIT %d OFFSET %d
-			", $batch_size, $offset );
-
-			$files = $wpdb->get_results( $query, ARRAY_A );
-
-			if ( ! $files ) {
-				fclose( $fp );
-				return "Error: Failed to retrieve files. MySQL error: " . $wpdb->last_error;
-			}
-
-			foreach ( $files as $file ) {
-				fputcsv( $fp, array(
-					$file['file_id'],
-					$file['file_name'],
-					$file['file_path'],
-				) );
-				$processed++;
-			}
-
-			set_transient( 'wpfilebase_export_progress', $processed, HOUR_IN_SECONDS );
-			$offset += $batch_size;
-
-			// Add an artificial delay (0.1 seconds per batch)
-			usleep( 100000 );
-		}
-
-		fclose( $fp );
-
-		delete_transient( 'wpfilebase_export_progress' );
-		delete_transient( 'wpfilebase_export_total' );
-
-		return array(
-			'success' => true,
-			'message' => 'CSV file created successfully.',
-			'file_url' => $file_url,
-		);
-	}
-
-	public function handle_csv_upload() {
+	public function handle_wpfilebase_import() {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( 'Unauthorized access' );
 		}
 
-		check_admin_referer( 'fvm_update_ids', 'fvm_update_ids_nonce' );
+		check_admin_referer( 'fvm_import_wpfilebase', 'fvm_import_wpfilebase_nonce' );
 
-		if ( ! isset( $_FILES['csv_file'] ) ) {
-			$this->redirect_with_notification( 'error', 'No file uploaded' );
-			return;
-		}
+		$result = $this->update_ids->import_from_wpfilebase();
 
-		$csv_file = $_FILES['csv_file']['tmp_name'];
-		$result = $this->update_ids->process_csv( $csv_file );
-
-		$this->write_log();
+		$log = $this->update_ids->get_log();
+		$log_content = implode( "\n", $log );
+		file_put_contents( WP_CONTENT_DIR . '/fvm_import_wpfilebase.log', $log_content );
 
 		if ( $result['success'] ) {
-			$this->redirect_with_notification( 'success', $result['message'] );
+			$message = $result['message'] . "\n\nCheck the log file for details.";
+			set_transient( 'fvm_import_message', [ 'status' => 'success', 'message' => $message ], 60 );
 		} else {
-			$this->redirect_with_notification( 'error', $result['message'] );
+			$message = $result['message'] . "\n\nCheck the log file for details.";
+			set_transient( 'fvm_import_message', [ 'status' => 'error', 'message' => $message ], 60 );
 		}
+
+		wp_safe_redirect( admin_url( 'admin.php?page=fvm_settings&tab=wp-filebase-pro' ) );
+		exit;
+	}
+
+	public function handle_clear_log_wpfilebase() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( 'Unauthorized access' );
+		}
+
+		check_admin_referer( 'fvm_clear_log_wpfilebase', 'fvm_clear_log_wpfilebase_nonce' );
+
+		$log_file = WP_CONTENT_DIR . '/fvm_import_wpfilebase.log';
+		if ( file_exists( $log_file ) ) {
+			unlink( $log_file );
+		}
+
+		$this->redirect_with_notification( 'success', 'WP-Filebase import log cleared successfully' );
 	}
 
 	private function write_log() {
 		$log_file = WP_CONTENT_DIR . '/fvm_update_ids.log';
 		file_put_contents( $log_file, implode( "\n", $this->update_ids->get_log() ) . "\n\n", FILE_APPEND );
-	}
-
-	public function handle_clear_log() {
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( 'Unauthorized access' );
-		}
-
-		check_admin_referer( 'fvm_clear_log', 'fvm_clear_log_nonce' );
-
-		$log_file = WP_CONTENT_DIR . '/fvm_update_ids.log';
-		if ( file_exists( $log_file ) ) {
-			unlink( $log_file );
-		}
-
-		$this->redirect_with_notification( 'success', 'Log cleared successfully' );
 	}
 }
