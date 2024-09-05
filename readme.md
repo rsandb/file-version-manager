@@ -32,6 +32,8 @@ To manage files:
 
 ### Categories
 
+> **TODO:** Add category editing and link count value to a query on the file page to show all files within that category
+
 Organize your files into categories:
 
 1. Navigate to the 'Categories' page under the 'File Version Manager' menu.
@@ -73,7 +75,7 @@ If you're migrating from WP-Filebase Pro:
 
 ## Support
 
-For support, please refer to the plugin documentation or contact the plugin author.
+For support, please submit an issue on this GitHub repository.
 
 ## License
 
