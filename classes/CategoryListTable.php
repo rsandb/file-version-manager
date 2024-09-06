@@ -30,42 +30,55 @@ class CategoryListTable extends \WP_List_Table {
 		$search = isset( $_REQUEST['s'] ) ? sanitize_text_field( $_REQUEST['s'] ) : '';
 		$per_page = $this->get_items_per_page( 'fvm_categories_per_page', 20 );
 		$current_page = $this->get_pagenum();
-		$orderby = isset( $_REQUEST['orderby'] ) ? sanitize_key( $_REQUEST['orderby'] ) : 'cat_name';
-		$order = isset( $_REQUEST['order'] ) ? sanitize_key( $_REQUEST['order'] ) : 'asc';
+
+		// Add these lines to handle sorting
+		$orderby = isset( $_REQUEST['orderby'] ) ? $this->sanitize_orderby( $_REQUEST['orderby'] ) : 'cat_name';
+		$order = isset( $_REQUEST['order'] ) ? $this->sanitize_order( $_REQUEST['order'] ) : 'ASC';
+
+		$all_categories = $this->get_categories( $search, $orderby, $order );
+		$total_items = count( $all_categories );
 
 		$this->set_pagination_args( [ 
-			'total_items' => $this->get_total_items( $search ),
+			'total_items' => $total_items,
 			'per_page' => $per_page,
 		] );
 
 		$this->_column_headers = [ $this->get_columns(), [], $this->get_sortable_columns() ];
-		$this->items = $this->get_categories( $per_page, $current_page, $orderby, $order, $search );
+
+		$offset = ( $current_page - 1 ) * $per_page;
+		$this->items = array_slice( $all_categories, $offset, $per_page );
 
 		$this->process_bulk_action();
 	}
 
-	public function get_categories( $per_page, $current_page, $orderby = 'cat_name', $order = 'asc', $search = '' ) {
+	public function get_categories( $search = '', $orderby = 'cat_name', $order = 'ASC' ) {
 		global $wpdb;
 		$table_name = $this->get_table_name();
-		$offset = ( $current_page - 1 ) * $per_page;
 
-		$orderby = $this->sanitize_orderby( $orderby );
-		$order = $this->sanitize_order( $order );
+		$where_clause = $search ? $wpdb->prepare( "WHERE c.cat_name LIKE %s", '%' . $wpdb->esc_like( $search ) . '%' ) : '';
 
-		$where_clause = $search ? $wpdb->prepare( "WHERE cat_name LIKE %s", '%' . $wpdb->esc_like( $search ) . '%' ) : '';
+		// Update the ORDER BY clause in the query
+		$query = "SELECT c.*, COUNT(f.id) as total_files 
+			FROM $table_name c 
+			LEFT JOIN {$wpdb->prefix}" . Constants::FILE_TABLE_NAME . " f ON c.id = f.file_category_id 
+			$where_clause 
+			GROUP BY c.id 
+			ORDER BY c.cat_parent_id ASC, " . esc_sql( $orderby ) . " " . esc_sql( $order );
 
-		$query = $wpdb->prepare(
-			"SELECT c.*, COUNT(f.id) as total_files 
-            FROM $table_name c 
-            LEFT JOIN {$wpdb->prefix}" . Constants::FILE_TABLE_NAME . " f ON c.id = f.file_category_id 
-            $where_clause 
-            GROUP BY c.id 
-            ORDER BY $orderby $order 
-            LIMIT %d OFFSET %d",
-			$per_page, $offset
-		);
+		$categories = $wpdb->get_results( $query, ARRAY_A );
+		return $this->build_category_tree( $categories );
+	}
 
-		return $wpdb->get_results( $query, ARRAY_A );
+	private function build_category_tree( $categories, $parent_id = 0, $level = 0 ) {
+		$tree = [];
+		foreach ( $categories as $category ) {
+			if ( $category['cat_parent_id'] == $parent_id ) {
+				$category['level'] = $level;
+				$tree[] = $category;
+				$tree = array_merge( $tree, $this->build_category_tree( $categories, $category['id'], $level + 1 ) );
+			}
+		}
+		return $tree;
 	}
 
 	public function get_bulk_actions() {
@@ -138,6 +151,7 @@ class CategoryListTable extends \WP_List_Table {
 	}
 
 	public function column_cat_name( $item ) {
+		$indent = str_repeat( '— ', $item['level'] );
 		$actions = [ 
 			'id' => sprintf( '<span>ID: %d</span>', $item['id'] ),
 			'edit' => sprintf( '<a href="#" class="edit-category" data-category-id="%d">Edit</a>', $item['id'] ),
@@ -145,7 +159,8 @@ class CategoryListTable extends \WP_List_Table {
 		];
 
 		return sprintf(
-			'%s %s',
+			'%s%s %s',
+			$indent,
 			$item['cat_name'],
 			$this->row_actions( $actions )
 		);
