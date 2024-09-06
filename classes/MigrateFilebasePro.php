@@ -86,7 +86,7 @@ class MigrateFilebasePro {
 			'cat_name' => $category->cat_name,
 			'cat_description' => $category->cat_description,
 			'cat_slug' => $unique_slug,
-			'cat_parent_id' => $category->cat_parent ? $category->cat_parent : NULL,
+			'cat_parent_id' => $category->cat_parent ? $category->cat_parent : 0,
 		];
 
 		if ( $existing_category ) {

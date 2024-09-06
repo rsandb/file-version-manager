@@ -28,10 +28,10 @@ class CategoryListTable extends \WP_List_Table {
 		}
 
 		$search = isset( $_REQUEST['s'] ) ? sanitize_text_field( $_REQUEST['s'] ) : '';
+
 		$per_page = $this->get_items_per_page( 'fvm_categories_per_page', 20 );
 		$current_page = $this->get_pagenum();
 
-		// Add these lines to handle sorting
 		$orderby = isset( $_REQUEST['orderby'] ) ? $this->sanitize_orderby( $_REQUEST['orderby'] ) : 'cat_name';
 		$order = isset( $_REQUEST['order'] ) ? $this->sanitize_order( $_REQUEST['order'] ) : 'ASC';
 
@@ -100,8 +100,31 @@ class CategoryListTable extends \WP_List_Table {
 	}
 
 	public function search_box( $text, $input_id ) {
-		// This method can remain largely unchanged
-		// ...
+		if ( empty( $_REQUEST['s'] ) && ! $this->has_items() ) {
+			return;
+		}
+
+		$input_id = $input_id . '-search-input';
+
+		if ( ! empty( $_REQUEST['orderby'] ) ) {
+			echo '<input type="hidden" name="orderby" value="' . esc_attr( $_REQUEST['orderby'] ) . '" />';
+		}
+		if ( ! empty( $_REQUEST['order'] ) ) {
+			echo '<input type="hidden" name="order" value="' . esc_attr( $_REQUEST['order'] ) . '" />';
+		}
+		if ( ! empty( $_REQUEST['post_mime_type'] ) ) {
+			echo '<input type="hidden" name="post_mime_type" value="' . esc_attr( $_REQUEST['post_mime_type'] ) . '" />';
+		}
+		if ( ! empty( $_REQUEST['detached'] ) ) {
+			echo '<input type="hidden" name="detached" value="' . esc_attr( $_REQUEST['detached'] ) . '" />';
+		}
+		?>
+		<p class="search-box">
+			<label class="screen-reader-text" for="<?php echo esc_attr( $input_id ); ?>"><?php echo $text; ?>:</label>
+			<input type="search" id="<?php echo esc_attr( $input_id ); ?>" name="s" value="<?php _admin_search_query(); ?>" />
+			<?php submit_button( $text, '', '', false, array( 'id' => 'search-submit' ) ); ?>
+		</p>
+		<?php
 	}
 
 	private function ensure_table_exists() {
@@ -117,7 +140,7 @@ class CategoryListTable extends \WP_List_Table {
 	public function get_columns() {
 		return [ 
 			'cb' => '<input type="checkbox" />',
-			'cat_name' => 'Category Name',
+			'cat_name' => 'Name',
 			'cat_description' => 'Description',
 			'cat_parent_id' => 'Parent Category',
 			'total_files' => 'Count',

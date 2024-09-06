@@ -49,7 +49,7 @@ class Activate {
             cat_name varchar(255) NOT NULL,
             cat_slug varchar(255) NOT NULL,
             cat_description text,
-            cat_parent_id mediumint(9) DEFAULT 0,
+            cat_parent_id mediumint(9) DEFAULT 0 NOT NULL,
             PRIMARY KEY (id),
             UNIQUE KEY cat_slug (cat_slug)
         ) $charset_collate;";
