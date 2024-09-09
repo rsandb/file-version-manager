@@ -29,7 +29,7 @@ class CategoryListTable extends \WP_List_Table {
 
 		$search = isset( $_REQUEST['s'] ) ? sanitize_text_field( $_REQUEST['s'] ) : '';
 
-		$per_page = $this->get_items_per_page( 'fvm_categories_per_page', 20 );
+		$per_page = $this->get_items_per_page( 'fvm_categories_per_page', 40 );
 		$current_page = $this->get_pagenum();
 
 		$orderby = isset( $_REQUEST['orderby'] ) ? $this->sanitize_orderby( $_REQUEST['orderby'] ) : 'cat_name';

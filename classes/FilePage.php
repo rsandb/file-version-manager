@@ -42,36 +42,8 @@ class FilePage {
 		);
 	}
 
-	// public function add_screen_options() {
-	// 	add_screen_option( 'per_page', array(
-	// 		'label' => 'Files per page',
-	// 		'default' => 20,
-	// 		'option' => 'fvm_files_per_page',
-	// 	) );
-	// }
-
-	// public function set_screen_option( $status, $option, $value ) {
-	// 	if ( 'fvm_files_per_page' == $option ) {
-	// 		return $value;
-	// 	}
-	// 	return $status;
-	// }
-
-	// public function modify_screen_options( $columns ) {
-	// 	// Remove 'file_name' from the screen options
-	// 	if ( isset( $columns['file_name'] ) ) {
-	// 		unset( $columns['file_name'] );
-	// 	}
-	// 	return $columns;
-	// }
-
 	public function setup_list_table() {
 		$this->wp_list_table = new FileListTable( $this->file_manager );
-		add_screen_option( 'per_page', [ 
-			'label' => 'Files per page',
-			'default' => 20,
-			'option' => 'fvm_files_per_page',
-		] );
 	}
 
 	/**
@@ -294,7 +266,11 @@ class FilePage {
 							e.preventDefault();
 							const fileId = this.getAttribute('data-file-id');
 							const modal = document.getElementById('edit-modal-' + fileId);
-							modal.style.display = 'block';
+							if (modal) {
+								modal.style.display = 'block';
+							} else {
+								console.error('Modal not found for file ID:', fileId);
+							}
 						});
 					});
 
@@ -302,7 +278,9 @@ class FilePage {
 						button.addEventListener('click', function (e) {
 							e.preventDefault();
 							const modal = this.closest('.edit-modal');
-							modal.style.display = 'none';
+							if (modal) {
+								modal.style.display = 'none';
+							}
 						});
 					});
 
@@ -425,6 +403,7 @@ class FilePage {
 				$new_file = isset( $_FILES['new_file'] ) ? $_FILES['new_file'] : null;
 				$version = isset( $_POST['version'] ) ? sanitize_text_field( $_POST['version'] ) : '';
 				$file_display_name = isset( $_POST['file_display_name'] ) ? sanitize_text_field( $_POST['file_display_name'] ) : '';
+				$file_category_id = isset( $_POST['file_category_id'] ) ? intval( $_POST['file_category_id'] ) : 0;
 
 				// If auto-increment is enabled and a new file is uploaded, pass an empty version
 				$auto_increment_version = get_option( 'fvm_auto_increment_version', 1 );
@@ -434,7 +413,7 @@ class FilePage {
 
 				error_log( 'Step 6: $new_file: ' . print_r( $new_file, true ) );
 
-				$update_result = $this->file_manager->update_file( $file_id, $new_file, $version, $file_display_name );
+				$update_result = $this->file_manager->update_file( $file_id, $new_file, $version, $file_display_name, $file_category_id );
 
 				error_log( 'Step 7: Update result for file ID ' . $file_id . ': ' . ( $update_result ? 'success' : 'failure' ) );
 

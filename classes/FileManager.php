@@ -189,7 +189,7 @@ class FileManager {
 	 * @param string $version
 	 * @return bool
 	 */
-	public function update_file( $file_id, $new_file, $new_version, $file_display_name ) {
+	public function update_file( $file_id, $new_file, $new_version, $file_display_name, $file_category_id ) {
 		global $wpdb;
 
 		$table_name = $wpdb->prefix . Constants::FILE_TABLE_NAME;
@@ -210,6 +210,13 @@ class FileManager {
 		// Update file display name if provided
 		if ( ! empty( $file_display_name ) ) {
 			$update_data['file_display_name'] = $file_display_name;
+			$update_format[] = '%s';
+		}
+
+		// Update file category if provided
+		if ( ! empty( $file_category_id ) ) {
+			$update_data['file_category_id'] = $file_category_id;
+			$update_format[] = '%d';
 		}
 
 		// Update version if provided or auto-increment if enabled
@@ -284,7 +291,7 @@ class FileManager {
 			$table_name,
 			$update_data,
 			array( 'id' => $file_id ),
-			null,
+			$update_format,
 			array( '%d' )
 		);
 

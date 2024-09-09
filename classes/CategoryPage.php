@@ -45,11 +45,6 @@ class CategoryPage {
 
 	public function setup_list_table() {
 		$this->wp_list_table = new CategoryListTable( $this->wpdb );
-		add_screen_option( 'per_page', [ 
-			'label' => 'Categories per page',
-			'default' => 20,
-			'option' => 'fvm_categories_per_page',
-		] );
 	}
 
 	public function display_admin_page() {
@@ -144,15 +139,11 @@ class CategoryPage {
 			"SELECT id, cat_name, cat_parent_id FROM {$this->table_name} WHERE cat_parent_id = %d ORDER BY cat_name ASC",
 			$parent_id
 		);
-		echo "<!-- Debug SQL: " . $query . " -->";
 		$categories = $this->wpdb->get_results( $query );
 
 		if ( $this->wpdb->last_error ) {
-			echo "<!-- Debug DB Error: " . $this->wpdb->last_error . " -->";
 			return [];
 		}
-
-		echo "<!-- Debug Categories: " . print_r( $categories, true ) . " -->";
 
 		foreach ( $categories as $category ) {
 			$category->children = $this->get_categories_hierarchical( $category->id );

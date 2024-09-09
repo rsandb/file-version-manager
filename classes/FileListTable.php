@@ -255,6 +255,15 @@ class FileListTable extends \WP_List_Table {
 								</p>
 							</td>
 						</tr>
+						<tr>
+							<th scope="row"><label for="file_category">File Category</label></th>
+							<td>
+								<select name="file_category_id" id="file_category">
+									<option value="">None</option>
+									<?php $this->display_category_options( $this->get_categories(), $item['file_category_id'] ); ?>
+								</select>
+							</td>
+						</tr>
 						<?php if ( ! get_option( 'fvm_auto_increment_version', 1 ) ) : ?>
 							<tr>
 								<th scope="row"><label for="version">Version</label></th>
@@ -279,6 +288,35 @@ class FileListTable extends \WP_List_Table {
 		</div>
 		<?php
 		return ob_get_clean();
+	}
+
+	private function get_categories() {
+		global $wpdb;
+		$cat_table_name = $wpdb->prefix . Constants::CAT_TABLE_NAME;
+		$categories = $wpdb->get_results( "SELECT id, cat_name, cat_parent_id FROM $cat_table_name ORDER BY cat_parent_id ASC, cat_name ASC" );
+		return $this->organize_categories_hierarchically( $categories );
+	}
+
+	private function organize_categories_hierarchically( $categories, $parent_id = 0 ) {
+		$organized = [];
+		foreach ( $categories as $category ) {
+			if ( $category->cat_parent_id == $parent_id ) {
+				$category->children = $this->organize_categories_hierarchically( $categories, $category->id );
+				$organized[] = $category;
+			}
+		}
+		return $organized;
+	}
+
+	private function display_category_options( $categories, $selected_id, $depth = 0 ) {
+		foreach ( $categories as $category ) {
+			$padding = str_repeat( '&nbsp;', $depth * 3 );
+			$selected = ( $selected_id == $category->id ) ? 'selected' : '';
+			echo "<option value='" . esc_attr( $category->id ) . "' $selected>" . $padding . esc_html( $category->cat_name ) . "</option>";
+			if ( ! empty( $category->children ) ) {
+				$this->display_category_options( $category->children, $selected_id, $depth + 1 );
+			}
+		}
 	}
 
 	private function format_file_size( $size_in_bytes ) {
