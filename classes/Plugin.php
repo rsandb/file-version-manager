@@ -132,13 +132,7 @@ class Plugin {
 		$screen = get_current_screen();
 		if ( $screen && ( strpos( $screen->id, 'fvm_files' ) !== false || $screen->id === 'files_page_fvm_settings' ) ) {
 			$upload_dir = wp_upload_dir();
-			$custom_folder = get_option( 'fvm_custom_directory' );
-
-			if ( ! empty( $custom_folder ) ) {
-				$custom_dir = trailingslashit( $upload_dir['basedir'] ) . trim( $custom_folder, '/' );
-			} else {
-				$custom_dir = $upload_dir['basedir'] . '/file-version-manager';
-			}
+			$custom_dir = $upload_dir['basedir'] . '/' . Constants::UPLOAD_DIR;
 
 			$total_size = $this->get_directory_size( $custom_dir );
 			$formatted_size = size_format( $total_size, 2 );

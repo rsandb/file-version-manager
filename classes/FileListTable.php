@@ -1,7 +1,7 @@
 <?php
 namespace LVAI\FileVersionManager;
 
-#todo: create a modal template for all files instead of creating a new modal for each file
+#todo: Use query string for search instead of $_REQUEST
 
 if ( ! class_exists( 'WP_List_Table' ) ) {
 	require_once( ABSPATH . 'wp-admin/includes/class-wp-list-table.php' );
@@ -115,23 +115,12 @@ class FileListTable extends \WP_List_Table {
 
 		$input_id = $input_id . '-search-input';
 
-		if ( ! empty( $_REQUEST['orderby'] ) ) {
-			echo '<input type="hidden" name="orderby" value="' . esc_attr( $_REQUEST['orderby'] ) . '" />';
-		}
-		if ( ! empty( $_REQUEST['order'] ) ) {
-			echo '<input type="hidden" name="order" value="' . esc_attr( $_REQUEST['order'] ) . '" />';
-		}
-		if ( ! empty( $_REQUEST['post_mime_type'] ) ) {
-			echo '<input type="hidden" name="post_mime_type" value="' . esc_attr( $_REQUEST['post_mime_type'] ) . '" />';
-		}
-		if ( ! empty( $_REQUEST['detached'] ) ) {
-			echo '<input type="hidden" name="detached" value="' . esc_attr( $_REQUEST['detached'] ) . '" />';
-		}
 		?>
 		<p class="search-box">
 			<label class="screen-reader-text"
 				for="<?php echo esc_attr( $input_id ); ?>"><?php echo esc_html( $text ); ?>:</label>
-			<input type="search" id="<?php echo esc_attr( $input_id ); ?>" name="s" value="<?php _admin_search_query(); ?>" />
+			<input type="search" id="<?php echo esc_attr( $input_id ); ?>" name="s"
+				value="<?php echo esc_attr( get_query_var( 's' ) ); ?>" />
 			<?php submit_button( $text, 'button', false, false, array( 'id' => 'search-submit' ) ); ?>
 		</p>
 		<?php

@@ -28,24 +28,8 @@ class FileManager {
 	 * @return void
 	 */
 	private function set_upload_dir() {
-		$upload_dir = wp_upload_dir();
-		$custom_folder = get_option( 'fvm_custom_directory', 'file-version-manager' );
-		$this->upload_dir = 'wp-content/uploads/' . trim( $custom_folder, '/' );
+		$this->upload_dir = 'wp-content/uploads/' . Constants::UPLOAD_DIR;
 		wp_mkdir_p( ABSPATH . $this->upload_dir );
-	}
-
-	/**
-	 * Customizes the upload directory path based on the custom folder option set in the settings page.
-	 * 
-	 * @param array $uploads Array containing upload directory information.
-	 * @return array Modified array with customized upload directory path.
-	 */
-	public function custom_upload_dir( $uploads ) {
-		$custom_folder = get_option( 'fvm_custom_directory', 'file-version-manager' );
-		$uploads['subdir'] = '/' . trim( $custom_folder, '/' );
-		$uploads['path'] = $uploads['basedir'] . $uploads['subdir'];
-		$uploads['url'] = $uploads['baseurl'] . $uploads['subdir'];
-		return $uploads;
 	}
 
 	/**
