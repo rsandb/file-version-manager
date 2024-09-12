@@ -37,7 +37,7 @@ class SettingsPage {
 	}
 
 	public function register_settings() {
-		register_setting( 'fvm_settings', 'fvm_custom_directory' );
+		// register_setting( 'fvm_settings', 'fvm_custom_directory' );
 		register_setting( 'fvm_settings', 'fvm_debug_logs' );
 		register_setting( 'fvm_settings', 'fvm_auto_increment_version' );
 	}
@@ -143,21 +143,9 @@ class SettingsPage {
 				<div class="fvm_settings-section-content">
 
 					<div class="fvm_field-group">
-						<h3>Custom Upload Folder</h3>
-						<div class="fvm_input-group">
-							<span>/wp-content/downloads/</span>
-							<input type="text" name="fvm_custom_directory"
-								value="<?php echo esc_attr( get_option( 'fvm_custom_directory' ) ); ?>" class="regular-text" />
-						</div>
-						<small class="description">Enter the name of the folder within the WordPress uploads directory.
-							Leave
-							blank to use the default 'file-version-manager' folder.</small>
-					</div>
-
-					<div class="fvm_field-group">
 						<h3>Auto-Increment Version</h3>
 						<div class="fvm_input-group">
-							<input type="checkbox" name="fvm_auto_increment_version" value="1" <?php checked( get_option( 'fvm_auto_increment_version', 1 ), 1 ); ?> />
+							<input type="checkbox" name="fvm_auto_increment_version" value="0" <?php checked( get_option( 'fvm_auto_increment_version', 0 ), 0 ); ?> />
 							<span>Enable Auto-Increment Version</span>
 						</div>
 						<small class="description">Enable auto-increment version when files are replaced.</small>

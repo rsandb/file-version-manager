@@ -17,8 +17,8 @@ class Deactivate {
 
 		// Delete settings
 		// delete_option( 'fvm_custom_directory' );
-		// delete_option( 'fvm_debug_logs' );
-		// delete_option( 'fvm_auto_increment_version' );
+		delete_option( 'fvm_debug_logs' );
+		delete_option( 'fvm_auto_increment_version' );
 
 		flush_rewrite_rules();
 	}

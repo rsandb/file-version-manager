@@ -12,7 +12,7 @@ class FileManager {
 	public function __construct( \wpdb $wpdb ) {
 		$this->wpdb = $wpdb;
 		$this->table_name = $wpdb->prefix . Constants::FILE_TABLE_NAME;
-		$this->custom_folder = get_option( 'fvm_custom_directory', 'file-version-manager' );
+		$this->custom_folder = 'filebase';
 		$this->set_upload_dir();
 	}
 
@@ -29,7 +29,7 @@ class FileManager {
 	 */
 	private function set_upload_dir() {
 		$upload_dir = wp_upload_dir();
-		$custom_folder = get_option( 'fvm_custom_directory', 'file-version-manager' );
+		$custom_folder = 'filebase';
 		$this->upload_dir = 'wp-content/uploads/' . trim( $custom_folder, '/' );
 		wp_mkdir_p( ABSPATH . $this->upload_dir );
 	}
@@ -41,7 +41,7 @@ class FileManager {
 	 * @return array Modified array with customized upload directory path.
 	 */
 	public function custom_upload_dir( $uploads ) {
-		$custom_folder = get_option( 'fvm_custom_directory', 'file-version-manager' );
+		$custom_folder = 'filebase';
 		$uploads['subdir'] = '/' . trim( $custom_folder, '/' );
 		$uploads['path'] = $uploads['basedir'] . $uploads['subdir'];
 		$uploads['url'] = $uploads['baseurl'] . $uploads['subdir'];
