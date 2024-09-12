@@ -204,8 +204,7 @@ class FileManager {
 		$update_data = array();
 		$update_format = array();
 
-		// Check if auto-increment version is enabled
-		$auto_increment_version = get_option( 'fvm_auto_increment_version', 1 );
+		$auto_increment_version = get_option( 'fvm_auto_increment_version' );
 
 		// Update file display name if provided
 		if ( ! empty( $file_display_name ) ) {

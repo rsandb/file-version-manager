@@ -23,6 +23,7 @@ class SettingsPage {
 		add_action( 'admin_post_fvm_clear_log_categories', [ $this, 'handle_clear_log_categories' ] );
 		add_action( 'admin_post_fvm_import_wpfilebase', [ $this, 'handle_wpfilebase_import' ] );
 		add_action( 'admin_post_fvm_clear_log_wpfilebase', [ $this, 'handle_clear_log_wpfilebase' ] );
+		add_action( 'admin_post_fvm_set_default_options', [ $this, 'handle_set_default_options' ] );
 	}
 
 	public function add_settings_page() {
@@ -40,6 +41,15 @@ class SettingsPage {
 		// register_setting( 'fvm_settings', 'fvm_custom_directory' );
 		register_setting( 'fvm_settings', 'fvm_debug_logs' );
 		register_setting( 'fvm_settings', 'fvm_auto_increment_version' );
+	}
+
+	public function set_default_options() {
+		if ( get_option( 'fvm_debug_logs' ) === false ) {
+			update_option( 'fvm_debug_logs', 0 );
+		}
+		if ( get_option( 'fvm_auto_increment_version' ) === false ) {
+			update_option( 'fvm_auto_increment_version', 0 );
+		}
 	}
 
 	public function enqueue_styles() {
@@ -145,7 +155,7 @@ class SettingsPage {
 					<div class="fvm_field-group">
 						<h3>Auto-Increment Version</h3>
 						<div class="fvm_input-group">
-							<input type="checkbox" name="fvm_auto_increment_version" value="0" <?php checked( get_option( 'fvm_auto_increment_version', 0 ), 0 ); ?> />
+							<input type="checkbox" name="fvm_auto_increment_version" value="1" <?php checked( get_option( 'fvm_auto_increment_version' ), 1 ); ?> />
 							<span>Enable Auto-Increment Version</span>
 						</div>
 						<small class="description">Enable auto-increment version when files are replaced.</small>
@@ -263,17 +273,12 @@ class SettingsPage {
 
 		$result = $this->update_ids->import_from_wpfilebase();
 
-		$log = $this->update_ids->get_log();
-		$log_content = implode( "\n", $log );
+		$log_content = implode( "\n", $this->update_ids->get_log() );
 		file_put_contents( WP_CONTENT_DIR . '/fvm_import_wpfilebase.log', $log_content );
 
-		if ( $result['success'] ) {
-			$message = $result['message'] . "\n\nCheck the log file for details.";
-			set_transient( 'fvm_import_message', [ 'status' => 'success', 'message' => $message ], 60 );
-		} else {
-			$message = $result['message'] . "\n\nCheck the log file for details.";
-			set_transient( 'fvm_import_message', [ 'status' => 'error', 'message' => $message ], 60 );
-		}
+		$message = $result['message'] . "\n\nCheck the log file for details.";
+		$status = $result['success'] ? 'success' : 'error';
+		set_transient( 'fvm_import_message', [ 'status' => $status, 'message' => $message ], 60 );
 
 		wp_safe_redirect( admin_url( 'admin.php?page=fvm_settings&tab=wp-filebase-pro' ) );
 		exit;

@@ -56,7 +56,7 @@ class MigrateFilebasePro {
 	 */
 	private function import_categories() {
 		$wpfb_cats_table = $this->wpdb->prefix . 'wpfb_cats';
-		$categories = $this->wpdb->get_results( "SELECT * FROM $wpfb_cats_table" );
+		$categories = $this->wpdb->get_results( $this->wpdb->prepare( "SELECT * FROM %i", $wpfb_cats_table ) );
 
 		if ( empty( $categories ) ) {
 			$this->log[] = "No categories found in the WP-Filebase table.";
@@ -67,7 +67,7 @@ class MigrateFilebasePro {
 		$this->log[] = "--- Importing categories ---";
 		$this->log[] = "----------------------------\n";
 
-		$existing_categories = $this->wpdb->get_results( "SELECT id, cat_slug FROM {$this->category_table_name}", OBJECT_K );
+		$existing_categories = $this->wpdb->get_results( $this->wpdb->prepare( "SELECT id, cat_slug FROM %i", $this->category_table_name ), OBJECT_K );
 		$values = [];
 		$placeholders = [];
 

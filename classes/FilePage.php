@@ -430,7 +430,7 @@ class FilePage {
 		$action = $this->wp_list_table->current_action();
 
 		if ( $action && in_array( $action, [ 'delete', 'bulk-delete' ] ) ) {
-			check_admin_referer( 'bulk-' . $this->wp_list_table->_args['plural'] );
+			check_admin_referer( 'bulk-files' );
 
 			$file_ids = isset( $_REQUEST['file'] ) ? (array) $_REQUEST['file'] : [];
 
