@@ -1,8 +1,5 @@
 <?php
 
-# - Add compatibility with other file upload/management plugins
-# - Purge unused database entries
-
 namespace LVAI\FileVersionManager;
 
 use Exception;
@@ -73,30 +70,39 @@ class MigrateFilebasePro {
 
 		foreach ( $categories as $category ) {
 			$unique_slug = $this->get_unique_slug( $category->cat_name, $existing_categories );
-			$values[] = $category->cat_id;
-			$values[] = $category->cat_name;
-			$values[] = $category->cat_description;
-			$values[] = $unique_slug;
-			$values[] = $category->cat_parent ? $category->cat_parent : 0;
 			$placeholders[] = "(%d, %s, %s, %s, %d)";
+			$values = array_merge( $values, [ 
+				$category->cat_id,
+				$category->cat_name,
+				$category->cat_description,
+				$unique_slug,
+				$category->cat_parent ? $category->cat_parent : 0
+			] );
 
 			$this->log[] = "Imported category: ({$category->cat_id}) " . htmlspecialchars( $category->cat_name );
 		}
 
-		$query = "INSERT INTO {$this->category_table_name} 
-				  (id, cat_name, cat_description, cat_slug, cat_parent_id) 
-				  VALUES " . implode( ', ', $placeholders ) .
-			" ON DUPLICATE KEY UPDATE 
-				  cat_name = VALUES(cat_name), 
-				  cat_description = VALUES(cat_description), 
-				  cat_slug = VALUES(cat_slug), 
-				  cat_parent_id = VALUES(cat_parent_id)";
+		$query = $this->wpdb->prepare(
+			"INSERT INTO %i
+			(id, cat_name, cat_description, cat_slug, cat_parent_id) 
+			VALUES " . implode( ', ', $placeholders ) . "
+			ON DUPLICATE KEY UPDATE 
+			cat_name = VALUES(cat_name), 
+			cat_description = VALUES(cat_description), 
+			cat_slug = VALUES(cat_slug), 
+			cat_parent_id = VALUES(cat_parent_id)",
+			array_merge( [ $this->category_table_name ], $values )
+		);
 
-		$this->wpdb->query( $this->wpdb->prepare( $query, $values ) );
+		$result = $this->wpdb->query( $query );
 
-		$this->log[] = "\n-------------------------------";
-		$this->log[] = "--- Imported " . count( $categories ) . " categories. ---";
-		$this->log[] = "-------------------------------\n";
+		if ( $result === false ) {
+			$this->log[] = "Error importing categories: " . $this->wpdb->last_error;
+		} else {
+			$this->log[] = "\n-------------------------------";
+			$this->log[] = "--- Imported " . count( $categories ) . " categories. ---";
+			$this->log[] = "-------------------------------\n";
+		}
 	}
 
 	/**
