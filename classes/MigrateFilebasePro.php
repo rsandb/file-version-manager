@@ -9,10 +9,8 @@ use Exception;
 
 /**
  * This class handles the process of updating file IDs based on a CSV input.
- * It includes functionality to:
- * - Process a CSV file containing new ID and file name pairs
- * - Update the database with the new IDs for matching file names
- * - Log the entire process for debugging and auditing purposes
+ * - Grabs file data from the wp_wpfb_files and wp_wpfb_cats tables and imports it into the plugin's tables.
+ * - Logs the processes for debugging
  */
 class MigrateFilebasePro {
 	private $log = [];
@@ -54,6 +52,7 @@ class MigrateFilebasePro {
 
 	/**
 	 * Imports categories from wp_wpfb_cats table.
+	 * @return void
 	 */
 	private function import_categories() {
 		$wpfb_cats_table = $this->wpdb->prefix . 'wpfb_cats';
@@ -81,7 +80,7 @@ class MigrateFilebasePro {
 			$values[] = $category->cat_parent ? $category->cat_parent : 0;
 			$placeholders[] = "(%d, %s, %s, %s, %d)";
 
-			$this->log[] = "Imported category: " . htmlspecialchars( $category->cat_name ) . " with ID: ({$category->cat_id})";
+			$this->log[] = "Imported category: ({$category->cat_id}) " . htmlspecialchars( $category->cat_name );
 		}
 
 		$query = "INSERT INTO {$this->category_table_name} 
@@ -129,6 +128,7 @@ class MigrateFilebasePro {
 
 	/**
 	 * Imports files from wp_wpfb_files table.
+	 * @return void
 	 */
 	private function import_files() {
 		$wpfb_files_table = $this->wpdb->prefix . 'wpfb_files';
@@ -149,6 +149,11 @@ class MigrateFilebasePro {
 		$this->log[] = "Imported " . count( $files ) . " files.";
 	}
 
+	/**
+	 * Builds a map of file names to their corresponding IDs.
+	 * @param array $files
+	 * @return array
+	 */
 	private function build_file_map( $files ) {
 		$file_map = [];
 		foreach ( $files as $file ) {
@@ -166,6 +171,11 @@ class MigrateFilebasePro {
 		return $file_map;
 	}
 
+	/**
+	 * Updates existing files in the database based on the file map.
+	 * @param array $file_map
+	 * @return void
+	 */
 	private function update_files_from_map( $file_map ) {
 		foreach ( $file_map as $file_name => $ids ) {
 			$existing_files = $this->get_existing_files( $file_name );
@@ -178,6 +188,11 @@ class MigrateFilebasePro {
 		}
 	}
 
+	/**
+	 * Retrieves existing files from the database based on the file name.
+	 * @param string $file_name
+	 * @return array
+	 */
 	private function get_existing_files( $file_name ) {
 		return $this->wpdb->get_results( $this->wpdb->prepare(
 			"SELECT id FROM {$this->file_table_name} WHERE file_name = %s ORDER BY id",
@@ -185,6 +200,13 @@ class MigrateFilebasePro {
 		) );
 	}
 
+	/**
+	 * Updates existing files in the database based on the file map.
+	 * @param string $file_name
+	 * @param array $ids
+	 * @param array $existing_files
+	 * @return void
+	 */
 	private function update_existing_files( $file_name, array $ids, $existing_files ) {
 		for ( $i = 0; $i < min( count( $ids ), count( $existing_files ) ); $i++ ) {
 			$new_id = $ids[ $i ]['id'];
@@ -203,6 +225,12 @@ class MigrateFilebasePro {
 		$this->handle_extra_files( $file_name, $ids, $existing_files );
 	}
 
+	/**
+	 * Inserts new files into the database.
+	 * @param string $file_name
+	 * @param array $ids
+	 * @return void
+	 */
 	private function insert_new_files( $file_name, array $ids ) {
 		foreach ( $ids as $file_data ) {
 			$result = $this->wpdb->insert(
@@ -226,6 +254,12 @@ class MigrateFilebasePro {
 		}
 	}
 
+	/**
+	 * Handles file conflicts by temporarily updating the file ID.
+	 * @param int $new_id
+	 * @param string $file_name
+	 * @return void
+	 */
 	private function handle_file_conflict( $new_id, $file_name ) {
 		$conflict_file = $this->wpdb->get_row( $this->wpdb->prepare(
 			"SELECT id, file_name FROM {$this->file_table_name} WHERE id = %d AND file_name != %s",
@@ -245,6 +279,19 @@ class MigrateFilebasePro {
 		}
 	}
 
+	/**
+	 * Updates the file data in the database.
+	 * @param string $file_name
+	 * @param int $new_id
+	 * @param int $old_id
+	 * @param string $file_display_name
+	 * @param int $file_category_id
+	 * @param string $file_hash_md5
+	 * @param string $file_hash_sha256
+	 * @param int $file_added_by
+	 * @param string $file_password
+	 * @return void
+	 */
 	private function update_file_data( $file_name, $new_id, $old_id, $file_display_name, $file_category_id, $file_hash_md5, $file_hash_sha256, $file_added_by, $file_password ) {
 		$file_category_id = $file_category_id == 0 ? null : $file_category_id;
 
@@ -273,6 +320,13 @@ class MigrateFilebasePro {
 		}
 	}
 
+	/**
+	 * Handles extra files that are not found in the file map.
+	 * @param string $file_name
+	 * @param array $ids
+	 * @param array $existing_files
+	 * @return void
+	 */
 	private function handle_extra_files( $file_name, $ids, $existing_files ) {
 		for ( $i = count( $ids ); $i < count( $existing_files ); $i++ ) {
 			$temp_id = $this->get_temporary_id();
@@ -287,11 +341,19 @@ class MigrateFilebasePro {
 		}
 	}
 
+	/**
+	 * Retrieves the highest ID from the database and returns the next available ID.
+	 * @return int
+	 */
 	private function get_temporary_id() {
 		$temp_id = $this->wpdb->get_var( "SELECT MAX(id) FROM {$this->file_table_name}" ) + 1;
 		return $temp_id;
 	}
 
+	/**
+	 * Updates the remaining files in the database.
+	 * @return void
+	 */
 	private function update_remaining_files() {
 		$this->wpdb->query( $this->wpdb->prepare(
 			"UPDATE {$this->file_table_name} SET id = @new_id := @new_id + 1, date_modified = %s 
