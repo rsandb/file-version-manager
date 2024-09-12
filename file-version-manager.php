@@ -2,7 +2,7 @@
 /*
 Plugin Name: File Version Manager
 Description: Conveniently upload and update files site-wide.
-Version: 0.9.3
+Version: 0.9.6
 Author: Riley Sandborg
 Author URI: https://rileysandb.org/
 */
