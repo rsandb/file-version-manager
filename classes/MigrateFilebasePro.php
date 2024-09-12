@@ -129,7 +129,7 @@ class MigrateFilebasePro {
 	 */
 	private function slug_exists( $slug ) {
 		return $this->wpdb->get_var( $this->wpdb->prepare(
-			"SELECT COUNT(*) FROM {$this->category_table_name} WHERE cat_slug = %s", $slug ) ) > 0;
+			"SELECT COUNT(*) FROM %i WHERE cat_slug = %s", $this->category_table_name, $slug ) ) > 0;
 	}
 
 	/**
@@ -138,7 +138,7 @@ class MigrateFilebasePro {
 	 */
 	private function import_files() {
 		$wpfb_files_table = $this->wpdb->prefix . 'wpfb_files';
-		$files = $this->wpdb->get_results( "SELECT * FROM $wpfb_files_table" );
+		$files = $this->wpdb->get_results( $this->wpdb->prepare( "SELECT * FROM %i", $wpfb_files_table ) );
 
 		if ( empty( $files ) ) {
 			$this->log[] = "No files found in the WP-Filebase table.";
@@ -201,8 +201,7 @@ class MigrateFilebasePro {
 	 */
 	private function get_existing_files( $file_name ) {
 		return $this->wpdb->get_results( $this->wpdb->prepare(
-			"SELECT id FROM {$this->file_table_name} WHERE file_name = %s ORDER BY id",
-			$file_name
+			"SELECT id FROM %i WHERE file_name = %s ORDER BY id", $this->file_table_name, $file_name
 		) );
 	}
 
@@ -268,8 +267,7 @@ class MigrateFilebasePro {
 	 */
 	private function handle_file_conflict( $new_id, $file_name ) {
 		$conflict_file = $this->wpdb->get_row( $this->wpdb->prepare(
-			"SELECT id, file_name FROM {$this->file_table_name} WHERE id = %d AND file_name != %s",
-			$new_id, $file_name
+			"SELECT id, file_name FROM %i WHERE id = %d AND file_name != %s", $this->file_table_name, $new_id, $file_name
 		) );
 
 		if ( $conflict_file ) {
@@ -352,7 +350,10 @@ class MigrateFilebasePro {
 	 * @return int
 	 */
 	private function get_temporary_id() {
-		$temp_id = $this->wpdb->get_var( "SELECT MAX(id) FROM {$this->file_table_name}" ) + 1;
+		$temp_id = $this->wpdb->get_var( $this->wpdb->prepare(
+			"SELECT MAX(id) FROM %i",
+			$this->file_table_name
+		) ) + 1;
 		return $temp_id;
 	}
 
@@ -368,7 +369,7 @@ class MigrateFilebasePro {
 			current_time( 'mysql' )
 		) );
 
-		$this->highest_id = $this->wpdb->get_var( "SELECT MAX(id) FROM {$this->file_table_name}" );
+		$this->highest_id = $this->wpdb->get_var( $this->wpdb->prepare( "SELECT MAX(id) FROM %i", $this->file_table_name ) );
 		$this->log[] = "Updated remaining files. New highest ID: {$this->highest_id}";
 	}
 
