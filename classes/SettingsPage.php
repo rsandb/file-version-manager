@@ -37,7 +37,7 @@ class SettingsPage {
 	}
 
 	public function register_settings() {
-		// register_setting( 'fvm_settings', 'fvm_custom_directory' );
+		register_setting( 'fvm_settings', 'fvm_custom_directory' );
 		register_setting( 'fvm_settings', 'fvm_debug_logs' );
 		register_setting( 'fvm_settings', 'fvm_auto_increment_version' );
 	}
@@ -142,17 +142,17 @@ class SettingsPage {
 				<h2>General Settings</h2>
 				<div class="fvm_settings-section-content">
 
-					<!-- <div class="fvm_field-group">
+					<div class="fvm_field-group">
 						<h3>Custom Upload Folder</h3>
 						<div class="fvm_input-group">
 							<span>/wp-content/downloads/</span>
 							<input type="text" name="fvm_custom_directory"
-								value="<?php // echo esc_attr( get_option( 'fvm_custom_directory' ) ); ?>" class="regular-text" />
+								value="<?php echo esc_attr( get_option( 'fvm_custom_directory' ) ); ?>" class="regular-text" />
 						</div>
 						<small class="description">Enter the name of the folder within the WordPress uploads directory.
 							Leave
 							blank to use the default 'file-version-manager' folder.</small>
-					</div> -->
+					</div>
 
 					<div class="fvm_field-group">
 						<h3>Auto-Increment Version</h3>
@@ -212,6 +212,9 @@ class SettingsPage {
 						<p>
 							There are currently <?php echo esc_html( $category_count ); ?> categories and
 							<?php echo esc_html( $file_count ); ?> files in the WP-Filebase tables.
+							<br>
+							This will affect the files in the custom directory:
+							<?php echo esc_html( get_option( 'fvm_custom_directory', 'file-version-manager' ) ); ?>
 						</p>
 					</div>
 					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
@@ -228,7 +231,6 @@ class SettingsPage {
 						$log_content = file_get_contents( $log_file );
 						?>
 						<div class="fvm_log-container">
-							<h3>Import Log</h3>
 							<pre><?php echo esc_html( $log_content ); ?></pre>
 						</div>
 						<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">

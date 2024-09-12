@@ -78,9 +78,26 @@ class Plugin {
 
 					// Check if the file type is suitable for inline display
 					$inline_types = array(
-						'pdf', 'txt', 'html', 'xml', 'css', 'js', 'json',
-						'jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'bmp', 'tiff',
-						'mp3', 'ogg', 'wav', 'mp4', 'webm',
+						'pdf',
+						'txt',
+						'html',
+						'xml',
+						'css',
+						'js',
+						'json',
+						'jpg',
+						'jpeg',
+						'png',
+						'gif',
+						'svg',
+						'webp',
+						'bmp',
+						'tiff',
+						'mp3',
+						'ogg',
+						'wav',
+						'mp4',
+						'webm',
 					);
 					if ( in_array( $file_type, $inline_types ) ) {
 						header( 'Content-Disposition: inline; filename="' . $file_name . '"' );
@@ -132,7 +149,13 @@ class Plugin {
 		$screen = get_current_screen();
 		if ( $screen && ( strpos( $screen->id, 'fvm_files' ) !== false || $screen->id === 'files_page_fvm_settings' ) ) {
 			$upload_dir = wp_upload_dir();
-			$custom_dir = $upload_dir['basedir'] . '/' . Constants::UPLOAD_DIR;
+			$custom_folder = get_option( 'fvm_custom_directory' );
+
+			if ( ! empty( $custom_folder ) ) {
+				$custom_dir = trailingslashit( $upload_dir['basedir'] ) . trim( $custom_folder, '/' );
+			} else {
+				$custom_dir = $upload_dir['basedir'] . '/file-version-manager';
+			}
 
 			$total_size = $this->get_directory_size( $custom_dir );
 			$formatted_size = size_format( $total_size, 2 );

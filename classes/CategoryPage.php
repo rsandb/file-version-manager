@@ -21,6 +21,9 @@ class CategoryPage {
 		add_action( 'admin_menu', [ $this, 'add_category_page' ] );
 		add_action( 'admin_init', [ $this, 'setup_list_table' ] );
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_styles' ] );
+		add_action( 'admin_post_add_category', [ $this, 'handle_add_category' ] );
+		add_action( 'admin_post_update_category', [ $this, 'handle_update_category' ] );
+		add_action( 'admin_post_delete_category', [ $this, 'handle_delete_category' ] );
 	}
 
 	public function enqueue_styles() {
@@ -53,8 +56,15 @@ class CategoryPage {
 		<div class="wrap">
 			<h1>File Categories</h1>
 
+			<div id="edit-form-container" style="display:none;">
+				<form id="edit-form" method="post" enctype="multipart/form-data">
+					<!-- The content of the edit form will be dynamically inserted here -->
+				</form>
+			</div>
+
 			<?php
 			$this->wp_list_table->prepare_items();
+			$this->display_messages();
 			?>
 
 			<form class="search-form wp-clearfix" method="get">
@@ -66,8 +76,8 @@ class CategoryPage {
 					<div class="col-wrap">
 						<div class="form-wrap">
 							<h2>Add New Category</h2>
-							<form method="post" action="">
-
+							<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+								<input type="hidden" name="action" value="add_category">
 								<?php wp_nonce_field( 'add_category', 'add_category_nonce' ); ?>
 
 								<div class="form-field form-required term-name-wrap">
@@ -125,13 +135,56 @@ class CategoryPage {
 							$this->wp_list_table->display_bulk_action_result();
 							$this->wp_list_table->display();
 							?>
+
 						</form>
+
+						<?php
+						foreach ( $this->wp_list_table->items as $item ) {
+							echo $this->wp_list_table->get_edit_form_html( $item['id'], $item );
+						}
+						?>
+
 					</div>
 				</div>
 			</div>
 		</div>
+
+		<script type="text/javascript">
+			document.addEventListener('DOMContentLoaded', function () {
+				// Edit category
+				document.querySelectorAll('.edit-category').forEach(link => {
+					link.addEventListener('click', function (e) {
+						e.preventDefault();
+						const categoryId = this.getAttribute('data-category-id');
+						const modal = document.getElementById('edit-modal-' + categoryId);
+						if (modal) {
+							modal.style.display = 'block';
+						} else {
+							console.error('Modal not found for category ID:', categoryId);
+						}
+					});
+				});
+
+				// Close modal
+				document.querySelectorAll('.close, .cancel-edit').forEach(button => {
+					button.addEventListener('click', function (e) {
+						e.preventDefault();
+						const modal = this.closest('.edit-modal');
+						if (modal) {
+							modal.style.display = 'none';
+						}
+					});
+				});
+
+				// Close modal when clicking outside
+				window.addEventListener('click', function (event) {
+					if (event.target.classList.contains('edit-modal')) {
+						event.target.style.display = 'none';
+					}
+				});
+			});
+		</script>
 		<?php
-		ob_end_flush();
 	}
 
 	private function get_categories_hierarchical( $parent_id = 0 ) {
@@ -161,6 +214,132 @@ class CategoryPage {
 			if ( ! empty( $category->children ) ) {
 				$this->display_category_options( $category->children, $depth + 1 );
 			}
+		}
+	}
+
+	public function handle_add_category() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( 'You do not have sufficient permissions to access this page.' );
+		}
+
+		check_admin_referer( 'add_category', 'add_category_nonce' );
+
+		$cat_name = isset( $_POST['cat_name'] ) ? sanitize_text_field( $_POST['cat_name'] ) : '';
+		$cat_slug = isset( $_POST['cat_slug'] ) ? sanitize_title( $_POST['cat_slug'] ) : '';
+		$cat_parent_id = isset( $_POST['cat_parent_id'] ) ? intval( $_POST['cat_parent_id'] ) : 0;
+		$cat_description = isset( $_POST['cat_description'] ) ? sanitize_textarea_field( $_POST['cat_description'] ) : '';
+
+		if ( empty( $cat_name ) ) {
+			$this->add_admin_notice( 'error', 'Category name is required.' );
+			wp_redirect( admin_url( 'admin.php?page=fvm_categories' ) );
+			exit;
+		}
+
+		if ( empty( $cat_slug ) ) {
+			$cat_slug = sanitize_title( $cat_name );
+		}
+
+		$result = $this->wpdb->insert(
+			$this->table_name,
+			[ 
+				'cat_name' => $cat_name,
+				'cat_slug' => $cat_slug,
+				'cat_parent_id' => $cat_parent_id,
+				'cat_description' => $cat_description,
+			],
+			[ '%s', '%s', '%d', '%s' ]
+		);
+
+		if ( $result === false ) {
+			$this->add_admin_notice( 'error', 'Failed to add category. ' . $this->wpdb->last_error );
+		} else {
+			$this->add_admin_notice( 'success', 'Category added successfully.' );
+		}
+
+		wp_redirect( admin_url( 'admin.php?page=fvm_categories' ) );
+		exit;
+	}
+
+	public function handle_update_category() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( 'You do not have sufficient permissions to access this page.' );
+		}
+
+		check_admin_referer( 'edit_category_' . $_POST['category_id'], 'edit_category_nonce' );
+
+		$category_id = intval( $_POST['category_id'] );
+		$cat_name = sanitize_text_field( $_POST['cat_name'] );
+		$cat_description = sanitize_textarea_field( $_POST['cat_description'] );
+		$cat_parent_id = intval( $_POST['cat_parent_id'] );
+
+		$update_data = array(
+			'cat_name' => $cat_name,
+			'cat_description' => $cat_description,
+			'cat_parent_id' => $cat_parent_id,
+		);
+
+		$update_result = $this->wpdb->update(
+			$this->table_name,
+			$update_data,
+			array( 'id' => $category_id ),
+			array( '%s', '%s', '%d' ),
+			array( '%d' )
+		);
+
+		if ( $update_result === false ) {
+			$this->add_admin_notice( 'error', 'Failed to update category. ' . $this->wpdb->last_error );
+		} else {
+			$this->add_admin_notice( 'success', 'Category updated successfully.' );
+		}
+
+		wp_redirect( admin_url( 'admin.php?page=fvm_categories' ) );
+		exit;
+	}
+
+	public function handle_delete_category() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( 'You do not have sufficient permissions to access this page.' );
+		}
+
+		if ( ! isset( $_GET['category_id'] ) || ! isset( $_GET['_wpnonce'] ) ) {
+			wp_die( 'Invalid request.' );
+		}
+
+		$category_id = intval( $_GET['category_id'] );
+
+		if ( ! wp_verify_nonce( $_GET['_wpnonce'], 'delete_category_' . $category_id ) ) {
+			wp_die( 'Security check failed.' );
+		}
+
+		$delete_result = $this->wpdb->delete(
+			$this->table_name,
+			array( 'id' => $category_id ),
+			array( '%d' )
+		);
+
+		if ( $delete_result === false ) {
+			$this->add_admin_notice( 'error', 'Failed to delete category. ' . $this->wpdb->last_error );
+		} else {
+			$this->add_admin_notice( 'success', 'Category deleted successfully.' );
+		}
+
+		wp_redirect( admin_url( 'admin.php?page=fvm_categories' ) );
+		exit;
+	}
+
+	private function add_admin_notice( $type, $message ) {
+		$notices = get_transient( 'fvm_admin_notices' ) ?: [];
+		$notices[] = [ 'type' => $type, 'message' => $message ];
+		set_transient( 'fvm_admin_notices', $notices, 60 );
+	}
+
+	private function display_messages() {
+		$notices = get_transient( 'fvm_admin_notices' );
+		if ( $notices ) {
+			foreach ( $notices as $notice ) {
+				echo '<div class="notice notice-' . esc_attr( $notice['type'] ) . ' is-dismissible"><p>' . esc_html( $notice['message'] ) . '</p></div>';
+			}
+			delete_transient( 'fvm_admin_notices' );
 		}
 	}
 }

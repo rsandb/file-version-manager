@@ -18,12 +18,12 @@ class MigrateFilebasePro {
 	private $log = [];
 	private $highest_id = 0;
 	private $wpdb;
-	private $table_name;
+	private $file_table_name;
 	private $category_table_name;
 
 	public function __construct( $wpdb ) {
 		$this->wpdb = $wpdb;
-		$this->table_name = $wpdb->prefix . Constants::FILE_TABLE_NAME;
+		$this->file_table_name = $wpdb->prefix . Constants::FILE_TABLE_NAME;
 		$this->category_table_name = $wpdb->prefix . Constants::CAT_TABLE_NAME;
 	}
 
@@ -35,6 +35,10 @@ class MigrateFilebasePro {
 		$this->wpdb->query( 'START TRANSACTION' );
 
 		try {
+			$this->log[] = "--------------------------";
+			$this->log[] = "--- Starting Migration ---";
+			$this->log[] = "--------------------------\n";
+
 			// Import categories first
 			$this->import_categories();
 
@@ -63,17 +67,19 @@ class MigrateFilebasePro {
 		}
 
 		foreach ( $categories as $category ) {
-			$this->import_category( $category );
+			$this->insert_category( $category );
 		}
 
-		$this->log[] = "Imported " . count( $categories ) . " categories.";
+		$this->log[] = "\n-------------------------------";
+		$this->log[] = "--- Imported " . count( $categories ) . " categories. ---";
+		$this->log[] = "-------------------------------\n";
 	}
 
 	/**
 	 * Imports a single category.
 	 * @param object $category
 	 */
-	private function import_category( $category ) {
+	private function insert_category( $category ) {
 		$existing_category = $this->wpdb->get_row( $this->wpdb->prepare(
 			"SELECT * FROM wp_fvm_categories WHERE id = %d",
 			$category->cat_id
@@ -111,8 +117,12 @@ class MigrateFilebasePro {
 			return;
 		}
 
+		$this->log[] = "\n-----------------------";
+		$this->log[] = "--- Importing files ---";
+		$this->log[] = "-----------------------\n";
+
 		foreach ( $files as $file ) {
-			$this->import_file( $file );
+			$this->insert_file( $file );
 		}
 
 		$this->log[] = "Imported " . count( $files ) . " files.";
@@ -122,28 +132,79 @@ class MigrateFilebasePro {
 	 * Imports a single file.
 	 * @param object $file
 	 */
-	private function import_file( $file ) {
+	private function insert_file( $file ) {
+		$this->log[] = "Incoming file:";
+		$this->log[] = "-> ({$file->file_id}) {$file->file_name}";
+
 		$existing_file = $this->wpdb->get_row( $this->wpdb->prepare(
-			"SELECT * FROM {$this->table_name} WHERE file_name = %s",
+			"SELECT * FROM {$this->file_table_name} WHERE file_name = %s",
 			$file->file_name
 		) );
 
+		$this->log[] = $existing_file ? "Target file:" : "No target file found with this name.";
+		$this->log[] = $existing_file ? "-> ({$existing_file->id}) {$existing_file->file_name}" : "";
+
+		// Check if the category exists
+		$category_exists = $file->file_category ? $this->wpdb->get_var( $this->wpdb->prepare(
+			"SELECT COUNT(*) FROM {$this->category_table_name} WHERE id = %d",
+			$file->file_category
+		) ) : 0;
+
 		$data = [ 
+			'id' => $file->file_id,
 			'file_name' => $file->file_name,
 			'file_display_name' => $file->file_display_name,
-			'file_category_id' => $file->file_category ? $file->file_category : NULL,
+			'file_category_id' => ( $file->file_category && $category_exists ) ? $file->file_category : NULL,
 			'date_modified' => current_time( 'mysql' ),
 		];
 
+		$this->log[] = "Prepared data for insertion/update: " . print_r( $data, true );
+
 		if ( $existing_file ) {
-			$this->wpdb->update( $this->table_name, $data, [ 'id' => $existing_file->id ] );
-			$this->log[] = "Updated file: " . htmlspecialchars( $file->file_name );
+			// If the existing file has a different ID, update the ID to match the incoming file
+			if ( $existing_file->id != $file->file_id ) {
+				$this->log[] = "Existing file ID ({$existing_file->id}) doesn't match incoming file ID ({$file->file_id}).";
+
+				// Check if the incoming ID already exists in the target table
+				$id_exists = $this->wpdb->get_var( $this->wpdb->prepare(
+					"SELECT COUNT(*) FROM {$this->file_table_name} WHERE id = %d",
+					$file->file_id
+				) );
+
+				if ( $id_exists ) {
+					$this->log[] = "Incoming file ID already exists in the target table. Deleting existing record to avoid duplicate ID error.";
+					// If the incoming ID exists, delete the existing record to avoid duplicate ID error
+					$this->wpdb->delete( $this->file_table_name, [ 'id' => $file->file_id ] );
+					$this->log[] = "Deleted existing record with ID: {$file->file_id}";
+				}
+
+				// Update the existing file's ID to match the incoming file's ID
+				$this->wpdb->update( $this->file_table_name, [ 'id' => $file->file_id ], [ 'file_name' => $file->file_name ] );
+				$this->log[] = "Updated existing file's ID to: {$file->file_id}";
+			}
+
+			// Update the existing file with the new data
+			$update_result = $this->wpdb->update( $this->file_table_name, $data, [ 'file_name' => $file->file_name ] );
+			if ( $update_result !== false ) {
+				$this->log[] = "Updated file:";
+				$this->log[] = "-> ({$file->file_id}) {$file->file_name}";
+			} else {
+				$this->log[] = "Error updating file: " . htmlspecialchars( $file->file_name ) . ". Database error: " . $this->wpdb->last_error;
+			}
 		} else {
-			$data['id'] = $file->file_id;
-			$this->wpdb->insert( $this->table_name, $data );
-			$this->log[] = "Imported file: " . htmlspecialchars( $file->file_name );
+			$this->log[] = "No existing file found. Proceeding with insertion.";
+			// Insert the new file
+			$insert_result = $this->wpdb->insert( $this->file_table_name, $data );
+			if ( $insert_result !== false ) {
+				$this->log[] = "Imported file: " . htmlspecialchars( $file->file_name );
+			} else {
+				$this->log[] = "Error importing file: " . htmlspecialchars( $file->file_name ) . ". Database error: " . $this->wpdb->last_error;
+			}
 		}
+
+		$this->log[] = "Finished processing file: " . htmlspecialchars( $file->file_display_name ) . "\n";
 	}
+
 
 	/**
 	 * Generates a unique slug for a category.

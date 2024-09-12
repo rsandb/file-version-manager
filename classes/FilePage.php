@@ -389,15 +389,10 @@ class FilePage {
 	 */
 	public function handle_file_update() {
 		if ( isset( $_POST['update_file'] ) && isset( $_POST['file_id'] ) ) {
-			error_log( 'Step 1: Entering handle_file_update method' );
-			error_log( 'Step 2: $_FILES: ' . print_r( $_FILES, true ) );
-			error_log( 'Step 3: $_POST: ' . print_r( $_POST, true ) );
 
 			if ( isset( $_POST['update_file'] ) && isset( $_POST['file_id'] ) ) {
-				error_log( 'Step 4: Update file action detected' );
 
 				check_admin_referer( 'edit_file_' . $_POST['file_id'], 'edit_file_nonce' );
-				error_log( 'Step 5: Nonce verified successfully' );
 
 				$file_id = intval( $_POST['file_id'] );
 				$new_file = isset( $_FILES['new_file'] ) ? $_FILES['new_file'] : null;
@@ -411,11 +406,7 @@ class FilePage {
 					$version = '';
 				}
 
-				error_log( 'Step 6: $new_file: ' . print_r( $new_file, true ) );
-
 				$update_result = $this->file_manager->update_file( $file_id, $new_file, $version, $file_display_name, $file_category_id );
-
-				error_log( 'Step 7: Update result for file ID ' . $file_id . ': ' . ( $update_result ? 'success' : 'failure' ) );
 
 				if ( $update_result ) {
 					$this->redirect_with_message( 'success', 'File updated successfully.' );
@@ -425,8 +416,6 @@ class FilePage {
 			} else {
 				error_log( 'Step 8: No update action detected in handle_file_update' );
 			}
-
-			error_log( 'Exiting handle_file_update method' );
 		}
 	}
 

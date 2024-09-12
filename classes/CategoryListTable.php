@@ -178,7 +178,13 @@ class CategoryListTable extends \WP_List_Table {
 		$actions = [ 
 			'id' => sprintf( '<span>ID: %d</span>', $item['id'] ),
 			'edit' => sprintf( '<a href="#" class="edit-category" data-category-id="%d">Edit</a>', $item['id'] ),
-			'delete' => sprintf( '<a href="%s" onclick="return confirm(\'Are you sure you want to delete this category?\')">Delete</a>', wp_nonce_url( admin_url( 'admin.php?page=fvm_categories&action=delete&category_id=' . $item['id'] ), 'delete_category_' . $item['id'] ) ),
+			'delete' => sprintf(
+				'<a href="%s" onclick="return confirm(\'Are you sure you want to delete this category?\')">Delete</a>',
+				wp_nonce_url(
+					admin_url( 'admin.php?page=fvm_categories&action=delete&category_id=' . $item['id'] ),
+					'delete_category_' . $item['id']
+				)
+			),
 		];
 
 		return sprintf(
@@ -187,6 +193,70 @@ class CategoryListTable extends \WP_List_Table {
 			$item['cat_name'],
 			$this->row_actions( $actions )
 		);
+	}
+
+	public function get_edit_form_html( $category_id, $item ) {
+		ob_start();
+		?>
+		<div id="edit-modal-<?php echo esc_attr( $category_id ); ?>" class="edit-modal" style="display:none;">
+			<div class="edit-modal-content">
+				<span class="close">&times;</span>
+				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+					<input type="hidden" name="action" value="update_category">
+					<?php wp_nonce_field( 'edit_category_' . $category_id, 'edit_category_nonce' ); ?>
+					<input type="hidden" name="category_id" value="<?php echo esc_attr( $category_id ); ?>">
+					<table class="form-table">
+						<tr>
+							<th scope="row"><label for="cat_name_<?php echo esc_attr( $category_id ); ?>">Category Name</label>
+							</th>
+							<td>
+								<input type="text" name="cat_name" id="cat_name_<?php echo esc_attr( $category_id ); ?>"
+									value="<?php echo esc_attr( $item['cat_name'] ); ?>" class="regular-text" required>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><label
+									for="cat_description_<?php echo esc_attr( $category_id ); ?>">Description</label></th>
+							<td>
+								<textarea name="cat_description" id="cat_description_<?php echo esc_attr( $category_id ); ?>"
+									rows="3"
+									class="large-text"><?php echo esc_textarea( $item['cat_description'] ); ?></textarea>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="cat_parent_id_<?php echo esc_attr( $category_id ); ?>">Parent
+									Category</label></th>
+							<td>
+								<select name="cat_parent_id" id="cat_parent_id_<?php echo esc_attr( $category_id ); ?>">
+									<option value="0">None</option>
+									<?php $this->display_category_options( $this->get_categories(), $item['cat_parent_id'], $category_id ); ?>
+								</select>
+							</td>
+						</tr>
+					</table>
+					<p class="submit">
+						<input type="submit" name="update_category" id="update_category_<?php echo esc_attr( $category_id ); ?>"
+							class="button button-primary" value="Update Category">
+						<button type="button" class="button cancel-edit">Cancel</button>
+					</p>
+				</form>
+			</div>
+		</div>
+		<?php
+		return ob_get_clean();
+	}
+
+	private function display_category_options( $categories, $selected_id, $current_id, $depth = 0 ) {
+		foreach ( $categories as $category ) {
+			if ( $category['id'] != $current_id ) {
+				$padding = str_repeat( '&nbsp;', $depth * 3 );
+				$selected = ( $selected_id == $category['id'] ) ? 'selected' : '';
+				echo "<option value='" . esc_attr( $category['id'] ) . "' $selected>" . $padding . esc_html( $category['cat_name'] ) . "</option>";
+				if ( isset( $category['children'] ) && ! empty( $category['children'] ) ) {
+					$this->display_category_options( $category['children'], $selected_id, $current_id, $depth + 1 );
+				}
+			}
+		}
 	}
 
 	private function get_parent_category_name( $parent_id ) {
