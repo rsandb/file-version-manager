@@ -5,6 +5,9 @@ Description: Conveniently upload and update files site-wide.
 Version: 0.9.7
 Author: Riley Sandborg
 Author URI: https://rileysandb.org/
+License: GPLv2 or later
+Plugin URI: https://github.com/rsandb/file-version-manager/
+Text Domain: file-version-manager
 */
 
 #NOTE: This plugin is compatible with the Big File Uploads plugin and displays a link to change the upload size if it is active
@@ -67,3 +70,18 @@ add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), function ($lin
 	array_unshift( $links, $settings_link );
 	return $links;
 } );
+
+require 'plugin-update-checker/plugin-update-checker.php';
+use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
+
+$myUpdateChecker = PucFactory::buildUpdateChecker(
+	'https://github.com/rsandb/file-version-manager/',
+	__FILE__,
+	'file-version-manager'
+);
+
+//Set the branch that contains the stable release.
+$myUpdateChecker->setBranch( 'main' );
+
+//Optional: If you're using a private repository, specify the access token like this:
+// $myUpdateChecker->setAuthentication( 'your-token-here' );
