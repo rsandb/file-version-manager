@@ -124,10 +124,16 @@ class FilePage {
 				wp_nonce_field( 'bulk-files' );
 				$this->wp_list_table->prepare_items();
 				$this->wp_list_table->display_bulk_action_result();
-				$this->wp_list_table->search_box( 'Search', 'search' );
-				$this->wp_list_table->display();
 				?>
 			</form>
+			<form method="get">
+				<input type="hidden" name="page" value="fvm_files" />
+				<?php
+				$this->wp_list_table->search_box( 'Search Files', 'search' );
+				?>
+			</form>
+
+			<?php $this->wp_list_table->display(); ?>
 
 			<?php
 			// Add modals for each file

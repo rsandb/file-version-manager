@@ -1,8 +1,6 @@
 <?php
 namespace LVAI\FileVersionManager;
 
-#todo: add new categories function
-#todo: add edit categories function
 #todo: add delete categories function
 #todo: link count number to files in admin page with a query
 
