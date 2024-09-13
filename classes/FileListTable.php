@@ -149,6 +149,8 @@ class FileListTable extends \WP_List_Table {
 	public function get_sortable_columns() {
 		return [ 
 			'file_name' => [ 'file_name', true ],
+			'file_type' => [ 'file_type', true ],
+			'file_size' => [ 'file_size', true ],
 			'date_modified' => [ 'date_modified', true ],
 		];
 	}
@@ -159,10 +161,11 @@ class FileListTable extends \WP_List_Table {
 		switch ( $column_name ) {
 			case 'file_name':
 			case 'file_type':
-			// return esc_html( isset( $simplified_file_types[ $item['file_type'] ] ) ? $simplified_file_types[ $item['file_type'] ] : 'Other' );
-			case 'version':
-			case 'date_modified':
 				return $item[ $column_name ];
+			case 'version':
+				return $item[ $column_name ];
+			case 'date_modified':
+				return date( 'Y/m/d \a\t g:i a', strtotime( $item[ $column_name ] ) );
 			case 'file_size':
 				return $this->format_file_size( $item[ $column_name ] );
 			case 'shortcode':
