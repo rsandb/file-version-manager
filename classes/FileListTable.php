@@ -49,8 +49,6 @@ class FileListTable extends \WP_List_Table {
 		$order = isset( $_REQUEST['order'] ) ? sanitize_key( $_REQUEST['order'] ) : 'desc';
 
 		$this->items = $this->get_files( $per_page, $current_page, $orderby, $order, $search );
-
-		$this->process_bulk_action();
 	}
 
 	public function get_files( $per_page, $current_page, $orderby = 'date_modified', $order = 'desc', $search = '' ) {

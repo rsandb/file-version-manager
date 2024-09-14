@@ -6,15 +6,15 @@ if ( ! class_exists( 'WP_List_Table' ) ) {
 }
 
 class CategoryListTable extends \WP_List_Table {
-	private $category_manager;
+	protected $wpdb;
 
-	public function __construct( $category_manager ) {
+	public function __construct( $wpdb ) {
 		parent::__construct( [ 
 			'singular' => 'category',
 			'plural' => 'categories',
 			'ajax' => false,
 		] );
-		$this->category_manager = $category_manager;
+		$this->wpdb = $wpdb;
 	}
 
 	private function get_table_name() {
@@ -47,8 +47,6 @@ class CategoryListTable extends \WP_List_Table {
 
 		$offset = ( $current_page - 1 ) * $per_page;
 		$this->items = array_slice( $all_categories, $offset, $per_page );
-
-		$this->process_bulk_action();
 	}
 
 	public function get_categories( $search = '', $orderby = 'cat_name', $order = 'ASC' ) {
@@ -67,18 +65,6 @@ class CategoryListTable extends \WP_List_Table {
 
 		$categories = $wpdb->get_results( $query, ARRAY_A );
 		return $this->build_category_tree( $categories );
-	}
-
-	private function build_category_tree( $categories, $parent_id = 0, $level = 0 ) {
-		$tree = [];
-		foreach ( $categories as $category ) {
-			if ( $category['cat_parent_id'] == $parent_id ) {
-				$category['level'] = $level;
-				$tree[] = $category;
-				$tree = array_merge( $tree, $this->build_category_tree( $categories, $category['id'], $level + 1 ) );
-			}
-		}
-		return $tree;
 	}
 
 	public function get_bulk_actions() {
@@ -181,7 +167,7 @@ class CategoryListTable extends \WP_List_Table {
 			'delete' => sprintf(
 				'<a href="%s" onclick="return confirm(\'Are you sure you want to delete this category?\')">Delete</a>',
 				wp_nonce_url(
-					admin_url( 'admin.php?page=fvm_categories&action=delete&category_id=' . $item['id'] ),
+					admin_url( 'admin-post.php?action=delete_category&category_id=' . $item['id'] ),
 					'delete_category_' . $item['id']
 				)
 			),
@@ -278,5 +264,29 @@ class CategoryListTable extends \WP_List_Table {
 
 	private function sanitize_order( $order ) {
 		return in_array( strtoupper( $order ), [ 'ASC', 'DESC' ] ) ? strtoupper( $order ) : 'ASC';
+	}
+
+	private function delete_category( $id ) {
+		global $wpdb;
+		$table_name = $this->get_table_name();
+		$wpdb->delete( $table_name, array( 'id' => $id ), array( '%d' ) );
+	}
+
+	private function add_admin_notice( $type, $message ) {
+		$notices = get_transient( 'fvm_admin_notices' ) ?: array();
+		$notices[] = array( 'type' => $type, 'message' => $message );
+		set_transient( 'fvm_admin_notices', $notices, 60 );
+	}
+
+	private function build_category_tree( $categories, $parent_id = 0, $level = 0 ) {
+		$tree = [];
+		foreach ( $categories as $category ) {
+			if ( $category['cat_parent_id'] == $parent_id ) {
+				$category['level'] = $level;
+				$tree[] = $category;
+				$tree = array_merge( $tree, $this->build_category_tree( $categories, $category['id'], $level + 1 ) );
+			}
+		}
+		return $tree;
 	}
 }

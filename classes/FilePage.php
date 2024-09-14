@@ -12,12 +12,12 @@ class FilePage {
 
 	public function init() {
 		add_action( 'admin_menu', [ $this, 'add_admin_menu' ] );
-		add_action( 'admin_init', [ $this, 'handle_file_upload' ] );
-		add_action( 'admin_init', [ $this, 'handle_file_deletion' ] );
-		add_action( 'admin_init', [ $this, 'handle_bulk_actions' ] );
-		add_action( 'admin_init', [ $this, 'handle_file_update' ] );
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_styles' ] );
-		add_action( 'load-toplevel_page_file-version-manager', [ $this, 'setup_list_table' ] );
+		add_action( 'load-toplevel_page_fvm_files', [ $this, 'setup_list_table' ] );
+		add_action( 'load-toplevel_page_fvm_files', [ $this, 'handle_file_upload' ] );
+		add_action( 'load-toplevel_page_fvm_files', [ $this, 'handle_file_deletion' ] );
+		add_action( 'load-toplevel_page_fvm_files', [ $this, 'handle_file_update' ] );
+		add_action( 'load-toplevel_page_fvm_files', [ $this, 'handle_bulk_actions' ] );
 		// add_filter( 'set-screen-option', [ $this, 'set_screen_option' ], 10, 3 );
 	}
 
@@ -42,10 +42,6 @@ class FilePage {
 		);
 	}
 
-	public function setup_list_table() {
-		$this->wp_list_table = new FileListTable( $this->file_manager );
-	}
-
 	/**
 	 * Enqueue scripts and styles for the admin page
 	 * @return void
@@ -59,13 +55,21 @@ class FilePage {
 		}
 	}
 
+	public function setup_list_table() {
+		$this->wp_list_table = new FileListTable( $this->file_manager );
+	}
+
 	/**
 	 * Display admin page
 	 * @return void
 	 */
 	public function display_admin_page() {
+
+		$this->setup_list_table();
+
 		ob_start();
 
+		$this->wp_list_table->prepare_items();
 		$this->handle_file_upload();
 		$this->handle_file_deletion();
 		$this->handle_file_update();
@@ -119,13 +123,6 @@ class FilePage {
 				</form>
 			</div>
 
-			<form method="post">
-				<?php
-				wp_nonce_field( 'bulk-files' );
-				$this->wp_list_table->prepare_items();
-				$this->wp_list_table->display_bulk_action_result();
-				?>
-			</form>
 			<form method="get">
 				<input type="hidden" name="page" value="fvm_files" />
 				<?php
@@ -133,7 +130,13 @@ class FilePage {
 				?>
 			</form>
 
-			<?php $this->wp_list_table->display(); ?>
+			<form method="post">
+				<?php
+				wp_nonce_field( 'bulk-files' );
+				$this->wp_list_table->display_bulk_action_result();
+				$this->wp_list_table->display();
+				?>
+			</form>
 
 			<?php
 			// Add modals for each file

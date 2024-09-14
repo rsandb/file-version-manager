@@ -1,7 +1,6 @@
 <?php
 namespace LVAI\FileVersionManager;
 
-#todo: add delete categories function
 #todo: link count number to files in admin page with a query
 
 class CategoryPage {
@@ -17,20 +16,12 @@ class CategoryPage {
 
 	public function init() {
 		add_action( 'admin_menu', [ $this, 'add_category_page' ] );
-		add_action( 'admin_init', [ $this, 'setup_list_table' ] );
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_styles' ] );
+		add_action( 'load-toplevel_page_fvm_categories', [ $this, 'setup_list_table' ] );
 		add_action( 'admin_post_add_category', [ $this, 'handle_add_category' ] );
 		add_action( 'admin_post_update_category', [ $this, 'handle_update_category' ] );
 		add_action( 'admin_post_delete_category', [ $this, 'handle_delete_category' ] );
-	}
-
-	public function enqueue_styles() {
-		if ( function_exists( 'get_current_screen' ) ) {
-			$screen = get_current_screen();
-			if ( $screen && $screen->id === 'files_page_fvm_categories' ) {
-				wp_enqueue_style( 'file-version-manager-styles', plugin_dir_url( dirname( __FILE__ ) ) . 'css/categories.css' );
-			}
-		}
+		add_action( 'admin_post_bulk_category', [ $this, 'handle_bulk_actions' ] );
 	}
 
 	public function add_category_page() {
@@ -44,15 +35,38 @@ class CategoryPage {
 		);
 	}
 
+	public function enqueue_styles() {
+		if ( function_exists( 'get_current_screen' ) ) {
+			$screen = get_current_screen();
+			if ( $screen && $screen->id === 'files_page_fvm_categories' ) {
+				wp_enqueue_style( 'file-version-manager-styles', plugin_dir_url( dirname( __FILE__ ) ) . 'css/categories.css' );
+			}
+		}
+	}
+
 	public function setup_list_table() {
-		$this->wp_list_table = new CategoryListTable( $this->wpdb );
+		global $wpdb;
+		$this->wp_list_table = new CategoryListTable( $wpdb );
 	}
 
 	public function display_admin_page() {
+
+		$this->setup_list_table();
+
 		ob_start();
+
+		$this->wp_list_table->prepare_items();
+
 		?>
 		<div class="wrap">
 			<h1>File Categories</h1>
+			<?php
+			if ( isset( $_GET['update'] ) && isset( $_GET['message'] ) ) {
+				$status = $_GET['update'] === 'success' ? 'updated' : 'error';
+				$message = urldecode( $_GET['message'] );
+				echo "<div class='notice $status is-dismissible'><p>$message</p></div>";
+			}
+			?>
 
 			<div id="edit-form-container" style="display:none;">
 				<form id="edit-form" method="post" enctype="multipart/form-data">
@@ -60,12 +74,8 @@ class CategoryPage {
 				</form>
 			</div>
 
-			<?php
-			$this->wp_list_table->prepare_items();
-			$this->display_messages();
-			?>
-
 			<form class="search-form wp-clearfix" method="get">
+				<input type="hidden" name="page" value="fvm_categories" />
 				<?php $this->wp_list_table->search_box( 'Search Categories', 'search' ); ?>
 			</form>
 
@@ -127,13 +137,13 @@ class CategoryPage {
 				</div>
 				<div id="col-right">
 					<div class="col-wrap">
-						<form method="post">
+
+						<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+							<input type="hidden" name="action" value="bulk_category">
 							<?php
-							wp_nonce_field( 'bulk-categories' );
-							$this->wp_list_table->display_bulk_action_result();
+							wp_nonce_field( 'bulk_category', 'bulk_category_nonce' );
 							$this->wp_list_table->display();
 							?>
-
 						</form>
 
 						<?php
@@ -228,8 +238,7 @@ class CategoryPage {
 		$cat_description = isset( $_POST['cat_description'] ) ? sanitize_textarea_field( $_POST['cat_description'] ) : '';
 
 		if ( empty( $cat_name ) ) {
-			$this->add_admin_notice( 'error', 'Category name is required.' );
-			wp_redirect( admin_url( 'admin.php?page=fvm_categories' ) );
+			$this->redirect_with_message( 'error', 'Category name is required.' );
 			exit;
 		}
 
@@ -249,9 +258,9 @@ class CategoryPage {
 		);
 
 		if ( $result === false ) {
-			$this->add_admin_notice( 'error', 'Failed to add category. ' . $this->wpdb->last_error );
+			$this->redirect_with_message( 'error', 'Failed to add category. ' . $this->wpdb->last_error );
 		} else {
-			$this->add_admin_notice( 'success', 'Category added successfully.' );
+			$this->redirect_with_message( 'success', 'Category added successfully.' );
 		}
 
 		wp_redirect( admin_url( 'admin.php?page=fvm_categories' ) );
@@ -285,9 +294,9 @@ class CategoryPage {
 		);
 
 		if ( $update_result === false ) {
-			$this->add_admin_notice( 'error', 'Failed to update category. ' . $this->wpdb->last_error );
+			$this->redirect_with_message( 'error', 'Failed to update category. ' . $this->wpdb->last_error );
 		} else {
-			$this->add_admin_notice( 'success', 'Category updated successfully.' );
+			$this->redirect_with_message( 'success', 'Category updated successfully.' );
 		}
 
 		wp_redirect( admin_url( 'admin.php?page=fvm_categories' ) );
@@ -305,8 +314,9 @@ class CategoryPage {
 
 		$category_id = intval( $_GET['category_id'] );
 
+		// Change the nonce action to match the one used when creating the delete link
 		if ( ! wp_verify_nonce( $_GET['_wpnonce'], 'delete_category_' . $category_id ) ) {
-			wp_die( 'Security check failed.' );
+			wp_die( 'Security check failed.', 'Invalid Nonce', array( 'response' => 403 ) );
 		}
 
 		$delete_result = $this->wpdb->delete(
@@ -316,28 +326,65 @@ class CategoryPage {
 		);
 
 		if ( $delete_result === false ) {
-			$this->add_admin_notice( 'error', 'Failed to delete category. ' . $this->wpdb->last_error );
+			$this->redirect_with_message( 'error', 'Failed to delete category. ' . $this->wpdb->last_error );
 		} else {
-			$this->add_admin_notice( 'success', 'Category deleted successfully.' );
+			$this->redirect_with_message( 'success', 'Category deleted successfully.' );
 		}
 
 		wp_redirect( admin_url( 'admin.php?page=fvm_categories' ) );
 		exit;
 	}
 
-	private function add_admin_notice( $type, $message ) {
-		$notices = get_transient( 'fvm_admin_notices' ) ?: [];
-		$notices[] = [ 'type' => $type, 'message' => $message ];
-		set_transient( 'fvm_admin_notices', $notices, 60 );
+	public function handle_bulk_actions() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( 'You do not have sufficient permissions to access this page.' );
+		}
+
+		check_admin_referer( 'bulk_category', 'bulk_category_nonce' );
+
+		$category_ids = isset( $_POST['category'] ) ? (array) $_POST['category'] : [];
+
+		if ( empty( $category_ids ) ) {
+			wp_die( 'No categories selected.', 'No Categories Selected', array( 'response' => 400 ) );
+		}
+
+		$deleted_count = 0;
+		foreach ( $category_ids as $category_id ) {
+			$delete_result = $this->wpdb->delete(
+				$this->table_name,
+				array( 'id' => $category_id ),
+				array( '%d' )
+			);
+
+			if ( $delete_result === false ) {
+				wp_die( 'Failed to delete category. ' . $this->wpdb->last_error, 'Delete Error', array( 'response' => 500 ) );
+			} else {
+				$deleted_count++;
+			}
+		}
+
+		if ( $deleted_count > 0 ) {
+			$message = sprintf(
+				_n( '%s category deleted successfully.', '%s categories deleted successfully.', $deleted_count, 'file-version-manager' ),
+				number_format_i18n( $deleted_count )
+			);
+			$this->redirect_with_message( 'success', $message );
+		} else {
+			$this->redirect_with_message( 'error', 'No categories were deleted.' );
+		}
 	}
 
-	private function display_messages() {
-		$notices = get_transient( 'fvm_admin_notices' );
-		if ( $notices ) {
-			foreach ( $notices as $notice ) {
-				echo '<div class="notice notice-' . esc_attr( $notice['type'] ) . ' is-dismissible"><p>' . esc_html( $notice['message'] ) . '</p></div>';
-			}
-			delete_transient( 'fvm_admin_notices' );
-		}
+	private function redirect_with_message( $status, $message ) {
+		$redirect_url = add_query_arg(
+			[ 
+				'page' => 'fvm_categories',
+				'update' => $status,
+				'message' => urlencode( $message ),
+			],
+			admin_url( 'admin.php' )
+		);
+
+		wp_redirect( $redirect_url );
+		exit;
 	}
 }
