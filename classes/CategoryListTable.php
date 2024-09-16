@@ -6,15 +6,15 @@ if ( ! class_exists( 'WP_List_Table' ) ) {
 }
 
 class CategoryListTable extends \WP_List_Table {
-	protected $wpdb;
+	private $category_manager;
 
-	public function __construct( $wpdb ) {
+	public function __construct( CategoryManager $category_manager ) {
 		parent::__construct( [ 
 			'singular' => 'category',
 			'plural' => 'categories',
 			'ajax' => false,
 		] );
-		$this->wpdb = $wpdb;
+		$this->category_manager = $category_manager;
 	}
 
 	private function get_table_name() {
@@ -23,30 +23,26 @@ class CategoryListTable extends \WP_List_Table {
 	}
 
 	public function prepare_items() {
-		if ( ! $this->ensure_table_exists() ) {
-			return;
-		}
+		$columns = $this->get_columns();
+		$hidden = array();
+		$sortable = $this->get_sortable_columns();
+		$this->_column_headers = array( $columns, $hidden, $sortable );
 
 		$search = isset( $_REQUEST['s'] ) ? sanitize_text_field( $_REQUEST['s'] ) : '';
+		$orderby = isset( $_REQUEST['orderby'] ) ? sanitize_key( $_REQUEST['orderby'] ) : 'cat_name';
+		$order = isset( $_REQUEST['order'] ) ? sanitize_key( $_REQUEST['order'] ) : 'ASC';
 
-		$per_page = $this->get_items_per_page( 'fvm_categories_per_page', 40 );
+		$per_page = 20;
 		$current_page = $this->get_pagenum();
 
-		$orderby = isset( $_REQUEST['orderby'] ) ? $this->sanitize_orderby( $_REQUEST['orderby'] ) : 'cat_name';
-		$order = isset( $_REQUEST['order'] ) ? $this->sanitize_order( $_REQUEST['order'] ) : 'ASC';
-
-		$all_categories = $this->get_categories( $search, $orderby, $order );
-		$total_items = count( $all_categories );
+		$total_items = count( $this->category_manager->get_categories( $search ) );
 
 		$this->set_pagination_args( [ 
 			'total_items' => $total_items,
 			'per_page' => $per_page,
 		] );
 
-		$this->_column_headers = [ $this->get_columns(), [], $this->get_sortable_columns() ];
-
-		$offset = ( $current_page - 1 ) * $per_page;
-		$this->items = array_slice( $all_categories, $offset, $per_page );
+		$this->items = $this->category_manager->get_categories( $search, $orderby, $order );
 	}
 
 	public function get_categories( $search = '', $orderby = 'cat_name', $order = 'ASC' ) {
@@ -55,7 +51,6 @@ class CategoryListTable extends \WP_List_Table {
 
 		$where_clause = $search ? $wpdb->prepare( "WHERE c.cat_name LIKE %s", '%' . $wpdb->esc_like( $search ) . '%' ) : '';
 
-		// Update the ORDER BY clause in the query
 		$query = "SELECT c.*, COUNT(f.id) as total_files 
 			FROM $table_name c 
 			LEFT JOIN {$wpdb->prefix}" . Constants::FILE_TABLE_NAME . " f ON c.id = f.file_category_id 
@@ -69,7 +64,7 @@ class CategoryListTable extends \WP_List_Table {
 
 	public function get_bulk_actions() {
 		return [ 
-			'delete' => 'Delete',
+			'bulk-delete' => 'Delete',
 		];
 	}
 

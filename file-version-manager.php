@@ -36,20 +36,24 @@ require_once __DIR__ . '/classes/FileListTable.php';
 require_once __DIR__ . '/classes/MigrateFilebasePro.php';
 require_once __DIR__ . '/classes/CategoryPage.php';
 require_once __DIR__ . '/classes/CategoryListTable.php';
+require_once __DIR__ . '/classes/CategoryManager.php';
 
-$update_ids = new MigrateFilebasePro( $GLOBALS['wpdb'] );
-$file_manager = new FileManager( $GLOBALS['wpdb'] );
-$shortcode = new Shortcode( $GLOBALS['wpdb'] );
+global $wpdb;
+$update_ids = new MigrateFilebasePro( $wpdb );
+$file_manager = new FileManager( $wpdb );
+$shortcode = new Shortcode( $wpdb );
 $file_page = new FilePage( $file_manager );
 $settings_page = new SettingsPage( $update_ids );
-$category_page = new CategoryPage();
+$category_manager = new CategoryManager( $wpdb );
+$category_page = new CategoryPage( $category_manager );
 
 $plugin = new Plugin(
 	$file_manager,
 	$file_page,
+	$category_manager,
 	$category_page,
 	$settings_page,
-	$shortcode
+	$shortcode,
 );
 
 $plugin->init();

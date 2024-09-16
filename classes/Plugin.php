@@ -5,6 +5,7 @@ namespace LVAI\FileVersionManager;
 class Plugin {
 	private $file_manager;
 	private $file_page;
+	private $category_manager;
 	private $category_page;
 	private $settings_page;
 	private $shortcode;
@@ -13,12 +14,14 @@ class Plugin {
 	public function __construct(
 		FileManager $file_manager,
 		FilePage $file_page,
+		CategoryManager $category_manager,
 		CategoryPage $category_page,
 		SettingsPage $settings_page,
 		Shortcode $shortcode
 	) {
 		$this->file_manager = $file_manager;
 		$this->file_page = $file_page;
+		$this->category_manager = $category_manager;
 		$this->category_page = $category_page;
 		$this->settings_page = $settings_page;
 		$this->shortcode = $shortcode;
