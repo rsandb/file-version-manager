@@ -23,61 +23,76 @@ class CategoryListTable extends \WP_List_Table {
 	}
 
 	public function prepare_items() {
-		$columns = $this->get_columns();
-		$hidden = array();
-		$sortable = $this->get_sortable_columns();
-		$this->_column_headers = array( $columns, $hidden, $sortable );
+		if ( ! $this->ensure_table_exists() ) {
+			return;
+		}
 
 		$search = isset( $_REQUEST['s'] ) ? sanitize_text_field( $_REQUEST['s'] ) : '';
-		$orderby = isset( $_REQUEST['orderby'] ) ? sanitize_key( $_REQUEST['orderby'] ) : 'cat_name';
-		$order = isset( $_REQUEST['order'] ) ? sanitize_key( $_REQUEST['order'] ) : 'ASC';
 
-		$per_page = 20;
+		$per_page = $this->get_items_per_page( 'fvm_categories_per_page', 40 );
 		$current_page = $this->get_pagenum();
 
-		$total_items = count( $this->category_manager->get_categories( $search ) );
+		$orderby = isset( $_REQUEST['orderby'] ) ? $this->sanitize_orderby( $_REQUEST['orderby'] ) : 'cat_name';
+		$order = isset( $_REQUEST['order'] ) ? $this->sanitize_order( $_REQUEST['order'] ) : 'ASC';
+
+		$all_categories = $this->get_categories( $search, $orderby, $order );
+		$total_items = count( $all_categories );
 
 		$this->set_pagination_args( [ 
 			'total_items' => $total_items,
 			'per_page' => $per_page,
 		] );
 
-		$this->items = $this->category_manager->get_categories( $search, $orderby, $order );
+		$this->_column_headers = [ $this->get_columns(), [], $this->get_sortable_columns() ];
+
+		$offset = ( $current_page - 1 ) * $per_page;
+		$this->items = array_slice( $all_categories, $offset, $per_page );
 	}
 
 	public function get_categories( $search = '', $orderby = 'cat_name', $order = 'ASC' ) {
 		global $wpdb;
 		$table_name = $this->get_table_name();
 
-		$where_clause = $search ? $wpdb->prepare( "WHERE c.cat_name LIKE %s", '%' . $wpdb->esc_like( $search ) . '%' ) : '';
-
+		// Remove the WHERE clause from the main query
 		$query = "SELECT c.*, COUNT(f.id) as total_files 
 			FROM $table_name c 
 			LEFT JOIN {$wpdb->prefix}" . Constants::FILE_TABLE_NAME . " f ON c.id = f.file_category_id 
-			$where_clause 
 			GROUP BY c.id 
 			ORDER BY c.cat_parent_id ASC, " . esc_sql( $orderby ) . " " . esc_sql( $order );
 
 		$categories = $wpdb->get_results( $query, ARRAY_A );
+
+		// Apply search filter after fetching all categories
+		if ( ! empty( $search ) ) {
+			$categories = array_filter( $categories, function ($category) use ($search) {
+				return stripos( $category['cat_name'], $search ) !== false;
+			} );
+		}
+
 		return $this->build_category_tree( $categories );
+	}
+
+	private function build_category_tree( $categories, $parent_id = 0, $level = 0 ) {
+		$tree = [];
+		foreach ( $categories as $category ) {
+			if ( $category['cat_parent_id'] == $parent_id ) {
+				$category['level'] = $level;
+				$tree[] = $category;
+				$tree = array_merge( $tree, $this->build_category_tree( $categories, $category['id'], $level + 1 ) );
+			}
+		}
+		return $tree;
 	}
 
 	public function get_bulk_actions() {
 		return [ 
-			'bulk-delete' => 'Delete',
+			'delete' => 'Delete',
 		];
 	}
 
 	public function get_total_items( $search = '' ) {
-		global $wpdb;
-		$table_name = $this->get_table_name();
-
-		$search_query = '';
-		if ( ! empty( $search ) ) {
-			$search_query = $wpdb->prepare( "WHERE cat_name LIKE %s", '%' . $wpdb->esc_like( $search ) . '%', '%' . $wpdb->esc_like( $search ) . '%' );
-		}
-
-		return $wpdb->get_var( "SELECT COUNT(*) FROM $table_name $search_query" );
+		$categories = $this->get_categories( $search );
+		return count( $categories );
 	}
 
 	public function search_box( $text, $input_id ) {
@@ -210,7 +225,12 @@ class CategoryListTable extends \WP_List_Table {
 							<td>
 								<select name="cat_parent_id" id="cat_parent_id_<?php echo esc_attr( $category_id ); ?>">
 									<option value="0">None</option>
-									<?php $this->display_category_options( $this->get_categories(), $item['cat_parent_id'], $category_id ); ?>
+									<?php
+									$categories = $this->category_manager->get_categories_hierarchical();
+									if ( ! empty( $categories ) ) {
+										$this->display_category_options( $categories, $item['cat_parent_id'], $category_id );
+									}
+									?>
 								</select>
 							</td>
 						</tr>
@@ -229,12 +249,12 @@ class CategoryListTable extends \WP_List_Table {
 
 	private function display_category_options( $categories, $selected_id, $current_id, $depth = 0 ) {
 		foreach ( $categories as $category ) {
-			if ( $category['id'] != $current_id ) {
+			if ( $category->id != $current_id ) {
 				$padding = str_repeat( '&nbsp;', $depth * 3 );
-				$selected = ( $selected_id == $category['id'] ) ? 'selected' : '';
-				echo "<option value='" . esc_attr( $category['id'] ) . "' $selected>" . $padding . esc_html( $category['cat_name'] ) . "</option>";
-				if ( isset( $category['children'] ) && ! empty( $category['children'] ) ) {
-					$this->display_category_options( $category['children'], $selected_id, $current_id, $depth + 1 );
+				$selected = ( $selected_id == $category->id ) ? 'selected' : '';
+				echo "<option value='" . esc_attr( $category->id ) . "' $selected>" . $padding . esc_html( $category->cat_name ) . "</option>";
+				if ( ! empty( $category->children ) ) {
+					$this->display_category_options( $category->children, $selected_id, $current_id, $depth + 1 );
 				}
 			}
 		}
@@ -271,17 +291,5 @@ class CategoryListTable extends \WP_List_Table {
 		$notices = get_transient( 'fvm_admin_notices' ) ?: array();
 		$notices[] = array( 'type' => $type, 'message' => $message );
 		set_transient( 'fvm_admin_notices', $notices, 60 );
-	}
-
-	private function build_category_tree( $categories, $parent_id = 0, $level = 0 ) {
-		$tree = [];
-		foreach ( $categories as $category ) {
-			if ( $category['cat_parent_id'] == $parent_id ) {
-				$category['level'] = $level;
-				$tree[] = $category;
-				$tree = array_merge( $tree, $this->build_category_tree( $categories, $category['id'], $level + 1 ) );
-			}
-		}
-		return $tree;
 	}
 }

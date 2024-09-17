@@ -37,6 +37,7 @@ require_once __DIR__ . '/classes/MigrateFilebasePro.php';
 require_once __DIR__ . '/classes/CategoryPage.php';
 require_once __DIR__ . '/classes/CategoryListTable.php';
 require_once __DIR__ . '/classes/CategoryManager.php';
+require_once __DIR__ . '/includes/functions.php';
 
 global $wpdb;
 $update_ids = new MigrateFilebasePro( $wpdb );

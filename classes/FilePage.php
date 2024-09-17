@@ -145,7 +145,7 @@ class FilePage {
 			}
 			?>
 
-			<script>
+			<script type="text/javascript">
 				document.addEventListener('DOMContentLoaded', function () {
 					const dropzone = document.querySelector('.fvm-dropzone');
 					const fileInput = document.getElementById('fvm-file-input');
@@ -350,9 +350,9 @@ class FilePage {
 			$upload_result = $this->file_manager->upload_file( $_FILES['file'] );
 
 			if ( $upload_result ) {
-				$this->redirect_with_message( 'success', 'File uploaded successfully.' );
+				fvm_redirect_with_message( 'fvm_files', 'success', 'File uploaded successfully.' );
 			} else {
-				$this->redirect_with_message( 'error', 'Error uploading file.' );
+				fvm_redirect_with_message( 'fvm_files', 'error', 'Error uploading file.' );
 			}
 		}
 	}
@@ -378,9 +378,9 @@ class FilePage {
 				error_log( "Delete result for file ID $file_id: " . ( $delete_result ? 'success' : 'failure' ) );
 
 				if ( $delete_result ) {
-					$this->redirect_with_message( 'success', 'File deleted successfully.' );
+					fvm_redirect_with_message( 'fvm_files', 'success', 'File deleted successfully.' );
 				} else {
-					$this->redirect_with_message( 'error', 'Error deleting file.' );
+					fvm_redirect_with_message( 'fvm_files', 'error', 'Error deleting file.' );
 				}
 
 			} else {
@@ -418,9 +418,9 @@ class FilePage {
 				$update_result = $this->file_manager->update_file( $file_id, $new_file, $version, $file_display_name, $file_category_id );
 
 				if ( $update_result ) {
-					$this->redirect_with_message( 'success', 'File updated successfully.' );
+					fvm_redirect_with_message( 'fvm_files', 'success', 'File updated successfully.' );
 				} else {
-					$this->redirect_with_message( 'error', 'Error updating file.' );
+					fvm_redirect_with_message( 'fvm_files', 'error', 'Error updating file.' );
 				}
 			} else {
 				error_log( 'Step 8: No update action detected in handle_file_update' );
@@ -456,42 +456,11 @@ class FilePage {
 						_n( '%s file deleted successfully.', '%s files deleted successfully.', $deleted_count, 'file-version-manager' ),
 						number_format_i18n( $deleted_count )
 					);
-					$this->redirect_with_message( 'success', $message );
+					fvm_redirect_with_message( 'fvm_files', 'success', $message );
 				} else {
-					$this->redirect_with_message( 'error', 'No files were deleted.' );
+					fvm_redirect_with_message( 'fvm_files', 'error', 'No files were deleted.' );
 				}
 			}
-		}
-	}
-
-	/**
-	 * Redirect with message
-	 * 
-	 * @param string $status
-	 * @param string $message
-	 * @return void
-	 */
-	private function redirect_with_message( $status, $message ) {
-		$redirect_url = add_query_arg(
-			[ 
-				'page' => 'fvm_files',
-				'update' => $status,
-				'message' => urlencode( $message ),
-			],
-			admin_url( 'admin.php' )
-		);
-
-		if ( ! headers_sent() ) {
-			wp_redirect( $redirect_url );
-			exit;
-		} else {
-			echo '<script type="text/javascript">';
-			echo 'window.location.href="' . esc_js( $redirect_url ) . '";';
-			echo '</script>';
-			echo '<noscript>';
-			echo '<meta http-equiv="refresh" content="0;url=' . esc_url( $redirect_url ) . '" />';
-			echo '</noscript>';
-			exit;
 		}
 	}
 }

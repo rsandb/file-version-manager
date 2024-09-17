@@ -49,21 +49,11 @@ class CategoryManager {
 		);
 	}
 
-	public function bulk_delete_categories( $category_ids ) {
-		$deleted_count = 0;
-		foreach ( $category_ids as $category_id ) {
-			$delete_result = $this->delete_category( $category_id );
-			if ( $delete_result !== false ) {
-				$deleted_count++;
-			}
-		}
-		return $deleted_count;
-	}
-
 	public function get_categories( $search = '', $orderby = 'cat_name', $order = 'ASC' ) {
-		$query = "SELECT c.*, COUNT(f.id) as file_count 
-                  FROM {$this->table_name} c 
-                  LEFT JOIN {$this->wpdb->prefix}" . Constants::FILE_TABLE_NAME . " f ON c.id = f.file_category_id";
+		$query = "SELECT c.*, COUNT(f.id) as file_count, 
+				  (SELECT COUNT(*) FROM {$this->wpdb->prefix}" . Constants::FILE_TABLE_NAME . " WHERE file_category_id = c.id) as total_files
+				  FROM {$this->table_name} c 
+				  LEFT JOIN {$this->wpdb->prefix}" . Constants::FILE_TABLE_NAME . " f ON c.id = f.file_category_id";
 
 		if ( ! empty( $search ) ) {
 			$query .= $this->wpdb->prepare( " WHERE c.cat_name LIKE %s", '%' . $this->wpdb->esc_like( $search ) . '%' );
@@ -71,7 +61,20 @@ class CategoryManager {
 
 		$query .= " GROUP BY c.id ORDER BY " . esc_sql( $orderby ) . " " . esc_sql( $order );
 
-		return $this->wpdb->get_results( $query, ARRAY_A );
+		$categories = $this->wpdb->get_results( $query, ARRAY_A );
+		return $this->build_category_tree( $categories );
+	}
+
+	public function build_category_tree( $categories, $parent_id = 0, $level = 0 ) {
+		$tree = [];
+		foreach ( $categories as $category ) {
+			if ( $category['cat_parent_id'] == $parent_id ) {
+				$category['level'] = $level;
+				$tree[] = $category;
+				$tree = array_merge( $tree, $this->build_category_tree( $categories, $category['id'], $level + 1 ) );
+			}
+		}
+		return $tree;
 	}
 
 	public function get_categories_hierarchical( $parent_id = 0 ) {
