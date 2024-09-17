@@ -2,7 +2,7 @@
 /*
 Plugin Name: File Version Manager
 Description: Conveniently upload and update files site-wide.
-Version: 0.9.7
+Version: 0.9.8
 Author: Riley Sandborg
 Author URI: https://rileysandb.org/
 License: GPLv2 or later
@@ -21,10 +21,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Define PLUGIN_URL constant
 define( 'LVAI\FileVersionManager\PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
-#todo: add autoloader
-// require_once __DIR__ . '/vendor/autoload.php';
-
 require_once __DIR__ . '/includes/Constants.php';
+require_once __DIR__ . '/includes/functions.php';
 require_once __DIR__ . '/classes/Plugin.php';
 require_once __DIR__ . '/classes/FileManager.php';
 require_once __DIR__ . '/classes/FilePage.php';
@@ -37,7 +35,6 @@ require_once __DIR__ . '/classes/MigrateFilebasePro.php';
 require_once __DIR__ . '/classes/CategoryPage.php';
 require_once __DIR__ . '/classes/CategoryListTable.php';
 require_once __DIR__ . '/classes/CategoryManager.php';
-require_once __DIR__ . '/includes/functions.php';
 
 global $wpdb;
 $update_ids = new MigrateFilebasePro( $wpdb );
