@@ -1,7 +1,5 @@
 <?php
-namespace LVAI\FileVersionManager;
-
-#todo: fix the file scan: currently the default directory shows all files, not just the custom folder
+namespace FVM\FileVersionManager;
 
 class FileManager {
 	private $upload_dir;
@@ -17,7 +15,7 @@ class FileManager {
 	}
 
 	public function init() {
-		add_action( 'admin_init', [ $this, 'scan_files' ] );
+		add_action( 'load-toplevel_page_fvm_files', [ $this, 'scan_files' ] );
 		add_action( 'admin_post_update_file', [ $this, 'handle_file_update' ] );
 		add_action( 'admin_post_nopriv_update_file', [ $this, 'handle_file_update' ] );
 	}
@@ -98,7 +96,7 @@ class FileManager {
 
 		if ( ! empty( $values ) ) {
 			$query = "INSERT INTO {$this->table_name} 
-					  (file_name, file_display_name, file_path, file_url, file_size, file_type, version, date_uploaded, date_modified) 
+					  (file_name, file_display_name, file_path, file_url, file_size, file_type, file_version, date_uploaded, date_modified) 
 					  VALUES " . implode( ', ', $placeholders );
 
 			$this->wpdb->query( $this->wpdb->prepare( $query, $values ) );
@@ -141,21 +139,27 @@ class FileManager {
 	 * 
 	 * @param array $file
 	 * @param int|null $file_id
-	 * @param string $version
+	 * @param string $file_version
 	 * @return int|false
 	 */
-	public function upload_file( $file, $file_id = null, $version = '1.0' ) {
+	public function upload_file( $file, $file_id = null, $file_version = '1.0' ) {
 		add_filter( 'upload_dir', [ $this, 'custom_upload_dir' ] );
 		$movefile = wp_handle_upload( $file, [ 'test_form' => false ] );
 		remove_filter( 'upload_dir', [ $this, 'custom_upload_dir' ] );
 
 		if ( $movefile && ! isset( $movefile['error'] ) ) {
 			$file_name = basename( $movefile['file'] );
+			$file_name = preg_replace( '/[\s\x{202F}\x{2009}]+/u', '-', $file_name );
 			$file_path = str_replace( ABSPATH, '', $movefile['file'] );
+			$absolute_path = ABSPATH . $file_path;
 			$file_url = home_url( 'download/' . $file_name );
 			$file_type = wp_check_filetype( ABSPATH . $file_path )['ext'];
 			$file_size = filesize( ABSPATH . $file_path );
 			$current_time = current_time( 'mysql' );
+
+			// Generate MD5 and SHA256 hashes
+			$md5_hash = md5_file( $absolute_path );
+			$sha256_hash = hash_file( 'sha256', $absolute_path );
 
 			$metadata = [ 
 				'file_name' => $file_name,
@@ -163,7 +167,9 @@ class FileManager {
 				'file_url' => $file_url,
 				'file_size' => $file_size,
 				'file_type' => $file_type,
-				'version' => $version,
+				'file_version' => $file_version,
+				'file_hash_md5' => $md5_hash,
+				'file_hash_sha256' => $sha256_hash,
 				'date_modified' => $current_time,
 			];
 
@@ -186,10 +192,10 @@ class FileManager {
 	 * 
 	 * @param int $file_id
 	 * @param array $file
-	 * @param string $version
+	 * @param string $file_version
 	 * @return bool
 	 */
-	public function update_file( $file_id, $new_file, $new_version, $file_display_name, $file_category_id ) {
+	public function update_file( $file_id, $new_file, $new_version, $file_display_name, $file_category_id, $file_description ) {
 		global $wpdb;
 
 		$table_name = $wpdb->prefix . Constants::FILE_TABLE_NAME;
@@ -218,17 +224,23 @@ class FileManager {
 			$update_format[] = '%d';
 		}
 
-		// Update version if provided or auto-increment if enabled
-		if ( ! empty( $new_version ) ) {
-			$update_data['version'] = $new_version;
-		} elseif ( $auto_increment_version && $new_file ) {
-			$current_version = $existing_file['version'];
-			$update_data['version'] = $this->increment_version( $current_version );
+		// Update file description if provided
+		if ( ! empty( $file_description ) ) {
+			$update_data['file_description'] = $file_description;
+			$update_format[] = '%s';
 		}
 
-		if ( isset( $update_data['version'] ) ) {
+		// Update version if provided or auto-increment if enabled
+		if ( ! empty( $new_version ) ) {
+			$update_data['file_version'] = $new_version;
+		} elseif ( $auto_increment_version && $new_file ) {
+			$current_version = $existing_file['file_version'];
+			$update_data['file_version'] = $this->increment_version( $current_version );
+		}
+
+		if ( isset( $update_data['file_version'] ) ) {
 			$update_format[] = '%s';
-			error_log( "Updating version to: " . $update_data['version'] );
+			error_log( "Updating version to: " . $update_data['file_version'] );
 		}
 
 		// Handle file upload if a new file is provided
@@ -306,7 +318,7 @@ class FileManager {
 		return true;
 	}
 
-	private function update_file_metadata( $file_name, $file_display_name, $file_path, $file_url, $file_size, $file_type, $version, $date_uploaded, $date_modified ) {
+	private function update_file_metadata( $file_name, $file_display_name, $file_path, $file_url, $file_size, $file_type, $file_version, $date_uploaded, $date_modified, $file_description ) {
 		global $wpdb;
 		$table_name = $wpdb->prefix . Constants::FILE_TABLE_NAME;
 
@@ -319,11 +331,12 @@ class FileManager {
 				'file_url' => $file_url,
 				'file_size' => $file_size,
 				'file_type' => $file_type,
-				'version' => $version,
+				'file_version' => $file_version,
 				'date_uploaded' => $date_uploaded,
 				'date_modified' => $date_modified,
+				'file_description' => $file_description,
 			),
-			array( '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s' )
+			array( '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s' )
 		);
 
 		if ( $result === false ) {
@@ -334,11 +347,11 @@ class FileManager {
 	/**
 	 * Increment the version number
 	 * 
-	 * @param string $version
+	 * @param string $file_version
 	 * @return string
 	 */
-	private function increment_version( $version ) {
-		$parts = explode( '.', $version );
+	private function increment_version( $file_version ) {
+		$parts = explode( '.', $file_version );
 		$major = intval( $parts[0] );
 		$major++;
 		return $major . '.0';

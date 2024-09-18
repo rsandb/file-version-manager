@@ -1,6 +1,6 @@
 <?php
 
-namespace LVAI\FileVersionManager;
+namespace FVM\FileVersionManager;
 
 class Activate {
 
@@ -34,11 +34,12 @@ class Activate {
             file_url varchar(255) NOT NULL,
             file_size bigint(20) NOT NULL,
             file_type varchar(100) NOT NULL,
+            file_description text,
             file_hash_md5 char(32),
             file_hash_sha256 char(64),
             file_added_by mediumint(9),
             file_password varchar(255),
-            version DECIMAL(5,1) NOT NULL,
+            file_version DECIMAL(5,1) NOT NULL,
             file_category_id mediumint(9),
             date_uploaded datetime NOT NULL,
             date_modified datetime NOT NULL,

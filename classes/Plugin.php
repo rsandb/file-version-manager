@@ -1,6 +1,6 @@
 <?php
 
-namespace LVAI\FileVersionManager;
+namespace FVM\FileVersionManager;
 
 class Plugin {
 	private $file_manager;

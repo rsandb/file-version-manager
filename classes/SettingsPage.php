@@ -1,5 +1,5 @@
 <?php
-namespace LVAI\FileVersionManager;
+namespace FVM\FileVersionManager;
 
 class SettingsPage {
 	private $update_ids;

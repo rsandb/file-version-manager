@@ -1,5 +1,5 @@
 <?php
-namespace LVAI\FileVersionManager;
+namespace FVM\FileVersionManager;
 
 class Shortcode {
 	private $wpdb;
@@ -28,6 +28,7 @@ class Shortcode {
 			'tag' => '',
 			'id' => 0,
 			'tpl' => '',
+			'title' => false,
 		), $atts, 'fvm' );
 
 		$table_name = $this->wpdb->prefix . Constants::FILE_TABLE_NAME;
@@ -57,6 +58,10 @@ class Shortcode {
 		if ( $file ) {
 			if ( $atts['tpl'] === 'urlonly' || $atts['tpl'] === 'url' ) {
 				return esc_url( $file->file_url );
+			} elseif ( $atts['tpl'] === 'table' ) {
+
+				return $this->table( $file, $atts );
+
 			} else {
 				ob_start();
 				?>
@@ -85,7 +90,7 @@ class Shortcode {
 			if ( $atts['tpl'] === 'thumbnail-grid-btns' ) {
 				return $this->grid( $file );
 			} elseif ( $atts['tpl'] === 'table' ) {
-				return $this->table( $file );
+				return $this->table( $file, $atts );
 			} else {
 				return $this->list( $file );
 			}
@@ -214,20 +219,34 @@ class Shortcode {
 	/**
 	 * Renders a table of files with their names, sizes, and types.
 	 */
-	private function table( $file ) {
+	private function table( $file, $atts ) {
+		$category_id = $file->file_category_id;
+
+		$category_name = $this->wpdb->get_var( $this->wpdb->prepare(
+			"SELECT cat_name FROM {$this->wpdb->prefix}" . Constants::CAT_TABLE_NAME . " WHERE id = %d",
+			$category_id
+		) );
+
 		$files = $this->wpdb->get_results( $this->wpdb->prepare(
 			"SELECT * FROM {$this->wpdb->prefix}" . Constants::FILE_TABLE_NAME . " WHERE file_category_id = %d ORDER BY file_display_name ASC",
 			$file->file_category_id
 		) );
+
+		$has_description = array_reduce( $files, function ($carry, $file) {
+			return $carry || ! empty( $file->file_description );
+		}, false );
 
 		ob_start();
 		?>
 		<table class="fvm-file-table">
 			<thead>
 				<tr>
-					<th>File Name</th>
+					<th><?php echo $atts['title'] ? esc_html( $atts['title'] ) : 'File Name'; ?></th>
+					<?php if ( $has_description ) : ?>
+						<th>Description</th>
+					<?php endif; ?>
+					<th>Version</th>
 					<th>File Size</th>
-					<th>File Type</th>
 				</tr>
 			</thead>
 			<tbody>
@@ -236,8 +255,9 @@ class Shortcode {
 						<td><a href="<?php echo esc_url( $file->file_url ); ?>" target="_blank"
 								rel="noopener noreferrer"><?php echo esc_html( ! empty( $file->file_display_name ) ? $file->file_display_name : $file->file_name ); ?></a>
 						</td>
+						<td><?php echo esc_html( $file->file_description ); ?></td>
+						<td><?php echo esc_html( $file->file_version ); ?></td>
 						<td><?php echo esc_html( size_format( $file->file_size, 1 ) ); ?></td>
-						<td><?php echo esc_html( $file->file_type ); ?></td>
 					</tr>
 				<?php endforeach; ?>
 			</tbody>

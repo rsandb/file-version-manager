@@ -1,6 +1,6 @@
 <?php
 
-namespace LVAI\FileVersionManager;
+namespace FVM\FileVersionManager;
 
 use Exception;
 
@@ -171,6 +171,8 @@ class MigrateFilebasePro {
 				'file_hash_sha256' => $file->file_hash_sha256,
 				'file_added_by' => $file->file_added_by,
 				'file_password' => $file->file_password,
+				'file_version' => $file->file_version,
+				'file_description' => $file->file_description,
 			];
 			$this->highest_id = max( $this->highest_id, intval( $file->file_id ) );
 		}
@@ -221,10 +223,12 @@ class MigrateFilebasePro {
 			$file_hash_sha256 = $ids[ $i ]['file_hash_sha256'];
 			$file_added_by = $ids[ $i ]['file_added_by'];
 			$file_password = $ids[ $i ]['file_password'];
+			$file_version = $ids[ $i ]['file_version'];
+			$file_description = $ids[ $i ]['file_description'];
 			$old_id = $existing_files[ $i ]->id;
 
 			$this->handle_file_conflict( $new_id, $file_name );
-			$this->update_file_data( $file_name, $new_id, $old_id, $file_display_name, $file_category_id, $file_hash_md5, $file_hash_sha256, $file_added_by, $file_password );
+			$this->update_file_data( $file_name, $new_id, $old_id, $file_display_name, $file_category_id, $file_hash_md5, $file_hash_sha256, $file_added_by, $file_password, $file_version, $file_description );
 		}
 
 		$this->handle_extra_files( $file_name, $ids, $existing_files );
@@ -247,7 +251,7 @@ class MigrateFilebasePro {
 					'file_category_id' => $file_data['file_category_id'],
 					'date_modified' => current_time( 'mysql' ),
 				],
-				[ '%d', '%s', '%s', '%d', '%s' ]
+				[ '%d', '%s', '%s', '%d', '%s', '%s', '%s' ]
 			);
 
 			if ( $result !== false ) {
@@ -296,8 +300,9 @@ class MigrateFilebasePro {
 	 * @param string $file_password
 	 * @return void
 	 */
-	private function update_file_data( $file_name, $new_id, $old_id, $file_display_name, $file_category_id, $file_hash_md5, $file_hash_sha256, $file_added_by, $file_password ) {
+	private function update_file_data( $file_name, $new_id, $old_id, $file_display_name, $file_category_id, $file_hash_md5, $file_hash_sha256, $file_added_by, $file_password, $file_version, $file_description ) {
 		$file_category_id = $file_category_id == 0 ? null : $file_category_id;
+		$file_version = empty( $file_version ) ? '1.0' : $file_version;
 
 		$result = $this->wpdb->update(
 			$this->file_table_name,
@@ -310,9 +315,11 @@ class MigrateFilebasePro {
 				'file_hash_sha256' => $file_hash_sha256,
 				'file_added_by' => $file_added_by,
 				'file_password' => $file_password,
+				'file_version' => $file_version,
+				'file_description' => $file_description,
 			],
 			[ 'file_name' => $file_name, 'id' => $old_id ],
-			[ '%d', '%s', '%s', '%d', '%s', '%s', '%d', '%s' ],
+			[ '%d', '%s', '%s', '%d', '%s', '%s', '%d', '%s', '%s', '%s' ],
 			[ '%s', '%d' ]
 		);
 

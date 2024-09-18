@@ -2,7 +2,7 @@
 /*
 Plugin Name: File Version Manager
 Description: Conveniently upload and update files site-wide.
-Version: 0.9.8
+Version: 0.9.12
 Author: Riley Sandborg
 Author URI: https://rileysandb.org/
 License: GPLv2 or later
@@ -12,14 +12,14 @@ Text Domain: file-version-manager
 
 #NOTE: This plugin is compatible with the Big File Uploads plugin and displays a link to change the upload size if it is active
 
-namespace LVAI\FileVersionManager;
+namespace FVM\FileVersionManager;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
 // Define PLUGIN_URL constant
-define( 'LVAI\FileVersionManager\PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+define( 'FVM\FileVersionManager\PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
 require_once __DIR__ . '/includes/Constants.php';
 require_once __DIR__ . '/includes/functions.php';

@@ -1,6 +1,6 @@
 <?php
 
-namespace LVAI\FileVersionManager;
+namespace FVM\FileVersionManager;
 
 class Constants {
 	const PLUGIN_DIR = __DIR__ . '/../';

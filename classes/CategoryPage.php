@@ -1,7 +1,5 @@
 <?php
-namespace LVAI\FileVersionManager;
-
-#todo: link count number to files in admin page with a query
+namespace FVM\FileVersionManager;
 
 class CategoryPage {
 	private $category_manager;

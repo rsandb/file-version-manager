@@ -1,5 +1,9 @@
 <?php
-namespace LVAI\FileVersionManager;
+
+#todo: fix searching to show child categories
+#todo: clicking on count will redirect to the files page showing all files in that category
+
+namespace FVM\FileVersionManager;
 
 if ( ! class_exists( 'WP_List_Table' ) ) {
 	require_once( ABSPATH . 'wp-admin/includes/class-wp-list-table.php' );

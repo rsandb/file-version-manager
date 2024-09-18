@@ -1,5 +1,5 @@
 <?php
-namespace LVAI\FileVersionManager;
+namespace FVM\FileVersionManager;
 
 class CategoryManager {
 	private $wpdb;
@@ -12,37 +12,66 @@ class CategoryManager {
 		$this->file_table_name = $wpdb->prefix . Constants::FILE_TABLE_NAME;
 	}
 
-	public function add_category( $cat_name, $cat_slug, $cat_parent_id, $cat_description ) {
-		if ( empty( $cat_slug ) ) {
-			$cat_slug = sanitize_title( $cat_name );
-		}
+	/**
+	 * Adds a new category to the database.
+	 *
+	 * @param string $cat_name The name of the category.
+	 * @param string $cat_slug Optional. The slug of the category.
+	 * @param int $cat_parent_id Optional. The parent ID of the category.
+	 * @param string $cat_description Optional. The description of the category.
+	 * @return bool|int Returns true on success, false on failure.
+	 */
+	public function add_category( $cat_name, $cat_slug = '', $cat_parent_id = 0, $cat_description = '' ) {
+		$cat_slug = empty( $cat_slug ) ? sanitize_title( $cat_name ) : $cat_slug;
 
 		return $this->wpdb->insert(
 			$this->category_table_name,
-			[ 
-				'cat_name' => $cat_name,
-				'cat_slug' => $cat_slug,
-				'cat_parent_id' => $cat_parent_id,
-				'cat_description' => $cat_description,
-			],
+			compact( 'cat_name', 'cat_slug', 'cat_parent_id', 'cat_description' ),
 			[ '%s', '%s', '%d', '%s' ]
 		);
 	}
 
+	/**
+	 * Updates a category in the database.
+	 *
+	 * @param int $category_id The ID of the category to update.
+	 * @param string $cat_name The new name of the category.
+	 * @param string $cat_description The new description of the category.
+	 * @param int $cat_parent_id The new parent ID of the category.
+	 * @return bool|int Returns true on success, false on failure.
+	 */
 	public function update_category( $category_id, $cat_name, $cat_description, $cat_parent_id ) {
+		$data = array_filter( [ 
+			'cat_name' => $cat_name,
+			'cat_description' => $cat_description,
+			'cat_parent_id' => $cat_parent_id,
+		], function ($value) {
+			return $value !== null;
+		} );
+
+		if ( empty( $data ) ) {
+			return false;
+		}
+
+		$formats = array_map( function ($key) {
+			return $key === 'cat_parent_id' ? '%d' : '%s';
+		}, array_keys( $data ) );
+
 		return $this->wpdb->update(
 			$this->category_table_name,
-			[ 
-				'cat_name' => $cat_name,
-				'cat_description' => $cat_description,
-				'cat_parent_id' => $cat_parent_id,
-			],
+			$data,
 			[ 'id' => $category_id ],
-			[ '%s', '%s', '%d' ],
+			$formats,
 			[ '%d' ]
 		);
 	}
 
+	/**
+	 * Deletes a category from the database.
+	 *
+	 * @param int $category_id The ID of the category to delete.
+	 * @return bool|int Returns true on success, false on failure.
+	 */
 	public function delete_category( $category_id ) {
 		return $this->wpdb->delete(
 			$this->category_table_name,
@@ -51,6 +80,14 @@ class CategoryManager {
 		);
 	}
 
+	/**
+	 * Retrieves categories from the database.
+	 *
+	 * @param string $search Optional. The search query.
+	 * @param string $orderby The column to order by.
+	 * @param string $order The order direction.
+	 * @return array Returns an array of category data.
+	 */
 	public function get_categories( $search = '', $orderby = 'cat_name', $order = 'ASC' ) {
 		$allowed_orderby = [ 'cat_name', 'id', 'cat_parent_id' ];
 		$allowed_order = [ 'ASC', 'DESC' ];
@@ -77,6 +114,14 @@ class CategoryManager {
 		return $this->build_category_tree( $categories );
 	}
 
+	/**
+	 * Builds a hierarchical category tree to display parent-child relationships.
+	 *
+	 * @param array $categories The array of category data.
+	 * @param int $parent_id The parent ID to build the tree from.
+	 * @param int $level The current level of the tree.
+	 * @return array Returns the hierarchical category tree.
+	 */
 	public function build_category_tree( $categories, $parent_id = 0, $level = 0 ) {
 		$tree = [];
 		foreach ( $categories as $category ) {
@@ -89,10 +134,23 @@ class CategoryManager {
 		return $tree;
 	}
 
+	/**
+	 * Retrieves hierarchical categories from the database.
+	 *
+	 * @param int $parent_id The parent ID to retrieve categories from.
+	 * @return array Returns an array of hierarchical category data.
+	 */
 	public function get_categories_hierarchical( $parent_id = 0 ) {
+		$parent_id = intval( $parent_id );
+
 		$query = $this->wpdb->prepare(
-			"SELECT id, cat_name, cat_parent_id FROM %i WHERE cat_parent_id = %d ORDER BY cat_name ASC", $this->category_table_name, $parent_id
+			"SELECT id, cat_name, cat_parent_id 
+			 FROM {$this->category_table_name} 
+			 WHERE cat_parent_id = %d 
+			 ORDER BY cat_name ASC",
+			$parent_id
 		);
+
 		$categories = $this->wpdb->get_results( $query );
 
 		if ( $this->wpdb->last_error ) {
@@ -105,4 +163,5 @@ class CategoryManager {
 
 		return $categories;
 	}
+
 }

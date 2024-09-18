@@ -1,6 +1,6 @@
 <?php
 
-namespace LVAI\FileVersionManager;
+namespace FVM\FileVersionManager;
 
 class Deactivate {
 	public static function deactivate() {

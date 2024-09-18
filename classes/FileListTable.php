@@ -1,5 +1,5 @@
 <?php
-namespace LVAI\FileVersionManager;
+namespace FVM\FileVersionManager;
 
 #todo: category query string in URL returns all files in that category
 
@@ -145,7 +145,7 @@ class FileListTable extends \WP_List_Table {
 			'file_name' => 'File Name',
 			'file_type' => 'File Type',
 			'file_size' => 'Size',
-			'version' => 'Version',
+			'file_version' => 'Version',
 			'shortcode' => 'Shortcode',
 			'date_modified' => 'Date Modified',
 		];
@@ -167,7 +167,7 @@ class FileListTable extends \WP_List_Table {
 			case 'file_name':
 			case 'file_type':
 				return $item[ $column_name ];
-			case 'version':
+			case 'file_version':
 				return $item[ $column_name ];
 			case 'date_modified':
 				return date( 'Y/m/d \a\t g:i a', strtotime( $item[ $column_name ] ) );
@@ -243,6 +243,30 @@ class FileListTable extends \WP_List_Table {
 							</td>
 						</tr>
 						<tr>
+							<th scope="row"><label for="file_description">Description</label></th>
+							<td>
+								<textarea name="file_description" id="file_description"
+									value="<?php echo esc_textarea( $item['file_description'] ); ?>"
+									class="regular-text"><?php echo esc_textarea( $item['file_description'] ); ?></textarea>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="md5_hash">MD5 Hash</label></th>
+							<td>
+								<p id="md5_hash" class="regular-text" style="word-break: break-all;">
+									<?php echo esc_attr( $item['file_hash_md5'] ); ?>
+								</p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="sha256_hash">SHA256 Hash</label></th>
+							<td>
+								<p id="sha256_hash" class="regular-text" style="word-break: break-all;">
+									<?php echo esc_attr( $item['file_hash_sha256'] ); ?>
+								</p>
+							</td>
+						</tr>
+						<tr>
 							<th scope="row"><label for="file_url">File URL</label></th>
 							<td>
 								<p id="file_url" class="regular-text">
@@ -261,10 +285,10 @@ class FileListTable extends \WP_List_Table {
 						</tr>
 						<?php if ( ! get_option( 'fvm_auto_increment_version', 1 ) ) : ?>
 							<tr>
-								<th scope="row"><label for="version">Version</label></th>
+								<th scope="row"><label for="file_version">Version</label></th>
 								<td>
-									<input type="number" step="0.1" min="0" name="version" id="version"
-										value="<?php echo esc_attr( $item['version'] ); ?>" class="regular-text">
+									<input type="number" step="0.1" min="0" name="file_version" id="file_version"
+										value="<?php echo esc_attr( $item['file_version'] ); ?>" class="regular-text">
 								</td>
 							</tr>
 						<?php endif; ?>
