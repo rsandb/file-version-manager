@@ -6,20 +6,22 @@ if ( ! class_exists( 'WP_List_Table' ) ) {
 }
 
 class CategoryListTable extends \WP_List_Table {
+	private $wpdb;
 	private $category_manager;
+	private $category_table_name;
+	private $file_table_name;
 
 	public function __construct( CategoryManager $category_manager ) {
+		global $wpdb;
+		$this->wpdb = $wpdb;
 		parent::__construct( [ 
 			'singular' => 'category',
 			'plural' => 'categories',
 			'ajax' => false,
 		] );
 		$this->category_manager = $category_manager;
-	}
-
-	private function get_table_name() {
-		global $wpdb;
-		return $wpdb->prefix . Constants::CAT_TABLE_NAME;
+		$this->category_table_name = $wpdb->prefix . Constants::CAT_TABLE_NAME;
+		$this->file_table_name = $wpdb->prefix . Constants::FILE_TABLE_NAME;
 	}
 
 	public function prepare_items() {
@@ -35,7 +37,7 @@ class CategoryListTable extends \WP_List_Table {
 		$orderby = isset( $_REQUEST['orderby'] ) ? $this->sanitize_orderby( $_REQUEST['orderby'] ) : 'cat_name';
 		$order = isset( $_REQUEST['order'] ) ? $this->sanitize_order( $_REQUEST['order'] ) : 'ASC';
 
-		$all_categories = $this->get_categories( $search, $orderby, $order );
+		$all_categories = $this->category_manager->get_categories( $search, $orderby, $order );
 		$total_items = count( $all_categories );
 
 		$this->set_pagination_args( [ 
@@ -47,41 +49,6 @@ class CategoryListTable extends \WP_List_Table {
 
 		$offset = ( $current_page - 1 ) * $per_page;
 		$this->items = array_slice( $all_categories, $offset, $per_page );
-	}
-
-	public function get_categories( $search = '', $orderby = 'cat_name', $order = 'ASC' ) {
-		global $wpdb;
-		$table_name = $this->get_table_name();
-
-		// Remove the WHERE clause from the main query
-		$query = "SELECT c.*, COUNT(f.id) as total_files 
-			FROM $table_name c 
-			LEFT JOIN {$wpdb->prefix}" . Constants::FILE_TABLE_NAME . " f ON c.id = f.file_category_id 
-			GROUP BY c.id 
-			ORDER BY c.cat_parent_id ASC, " . esc_sql( $orderby ) . " " . esc_sql( $order );
-
-		$categories = $wpdb->get_results( $query, ARRAY_A );
-
-		// Apply search filter after fetching all categories
-		if ( ! empty( $search ) ) {
-			$categories = array_filter( $categories, function ($category) use ($search) {
-				return stripos( $category['cat_name'], $search ) !== false;
-			} );
-		}
-
-		return $this->build_category_tree( $categories );
-	}
-
-	private function build_category_tree( $categories, $parent_id = 0, $level = 0 ) {
-		$tree = [];
-		foreach ( $categories as $category ) {
-			if ( $category['cat_parent_id'] == $parent_id ) {
-				$category['level'] = $level;
-				$tree[] = $category;
-				$tree = array_merge( $tree, $this->build_category_tree( $categories, $category['id'], $level + 1 ) );
-			}
-		}
-		return $tree;
 	}
 
 	public function get_bulk_actions() {
@@ -124,10 +91,10 @@ class CategoryListTable extends \WP_List_Table {
 	}
 
 	private function ensure_table_exists() {
-		global $wpdb;
-		$table_name = $this->get_table_name();
-		if ( $wpdb->get_var( "SHOW TABLES LIKE '$table_name'" ) != $table_name ) {
-			error_log( "Table $table_name does not exist." );
+		$table = $this->wpdb->esc_like( $this->category_table_name );
+		$sql = $this->wpdb->prepare( "SHOW TABLES LIKE %s", $table );
+		if ( $this->wpdb->get_var( $sql ) != $this->category_table_name ) {
+			error_log( "Table $this->category_table_name does not exist." );
 			return false;
 		}
 		return true;
@@ -265,9 +232,7 @@ class CategoryListTable extends \WP_List_Table {
 			return '—';
 		}
 
-		global $wpdb;
-		$table_name = $this->get_table_name();
-		$parent_name = $wpdb->get_var( $wpdb->prepare( "SELECT cat_name FROM $table_name WHERE id = %d", $parent_id ) );
+		$parent_name = $this->wpdb->get_var( $this->wpdb->prepare( "SELECT cat_name FROM %i WHERE id = %d", $this->category_table_name, $parent_id ) );
 
 		return $parent_name ? $parent_name : 'Unknown';
 	}
@@ -282,9 +247,7 @@ class CategoryListTable extends \WP_List_Table {
 	}
 
 	private function delete_category( $id ) {
-		global $wpdb;
-		$table_name = $this->get_table_name();
-		$wpdb->delete( $table_name, array( 'id' => $id ), array( '%d' ) );
+		$this->wpdb->delete( $this->category_table_name, array( 'id' => $id ), array( '%d' ) );
 	}
 
 	private function add_admin_notice( $type, $message ) {

@@ -1,6 +1,8 @@
 <?php
 namespace LVAI\FileVersionManager;
 
+#todo: category query string in URL returns all files in that category
+
 if ( ! class_exists( 'WP_List_Table' ) ) {
 	require_once( ABSPATH . 'wp-admin/includes/class-wp-list-table.php' );
 }
@@ -17,9 +19,14 @@ class FileListTable extends \WP_List_Table {
 		$this->file_manager = $file_manager;
 	}
 
-	private function get_table_name() {
+	private function get_table_name( $table ) {
 		global $wpdb;
-		return $wpdb->prefix . Constants::FILE_TABLE_NAME;
+		if ( $table === 'category' ) {
+			return $wpdb->prefix . Constants::CAT_TABLE_NAME;
+		} elseif ( $table === 'files' ) {
+			return $wpdb->prefix . Constants::FILE_TABLE_NAME;
+		}
+		return $wpdb->prefix . Constants::CAT_TABLE_NAME;
 	}
 
 	public function prepare_items() {
@@ -53,7 +60,7 @@ class FileListTable extends \WP_List_Table {
 
 	public function get_files( $per_page, $current_page, $orderby = 'date_modified', $order = 'desc', $search = '' ) {
 		global $wpdb;
-		$table_name = $this->get_table_name();
+		$file_table_name = $this->get_table_name( 'files' );
 		$offset = ( $current_page - 1 ) * $per_page;
 
 		// Validate $orderby to prevent SQL injection
@@ -73,7 +80,7 @@ class FileListTable extends \WP_List_Table {
 			$search_query = $wpdb->prepare( "WHERE file_name LIKE %s OR file_display_name LIKE %s", '%' . $wpdb->esc_like( $search ) . '%', '%' . $wpdb->esc_like( $search ) . '%' );
 		}
 
-		$query = "SELECT * FROM $table_name $search_query ORDER BY $orderby $order LIMIT %d OFFSET %d";
+		$query = "SELECT * FROM $file_table_name $search_query ORDER BY $orderby $order LIMIT %d OFFSET %d";
 		$query = $wpdb->prepare( $query, $per_page, $offset );
 
 		$results = $wpdb->get_results( $query, ARRAY_A );
@@ -94,14 +101,14 @@ class FileListTable extends \WP_List_Table {
 
 	public function get_total_items( $search = '' ) {
 		global $wpdb;
-		$table_name = $this->get_table_name();
+		$file_table_name = $this->get_table_name( 'files' );
 
 		$search_query = '';
 		if ( ! empty( $search ) ) {
 			$search_query = $wpdb->prepare( "WHERE file_name LIKE %s OR file_display_name LIKE %s", '%' . $wpdb->esc_like( $search ) . '%', '%' . $wpdb->esc_like( $search ) . '%' );
 		}
 
-		return $wpdb->get_var( "SELECT COUNT(*) FROM $table_name $search_query" );
+		return $wpdb->get_var( "SELECT COUNT(*) FROM $file_table_name $search_query" );
 	}
 
 	public function search_box( $text, $input_id ) {
@@ -124,9 +131,9 @@ class FileListTable extends \WP_List_Table {
 
 	private function ensure_table_exists() {
 		global $wpdb;
-		$table_name = $this->get_table_name();
-		if ( $wpdb->get_var( "SHOW TABLES LIKE '$table_name'" ) != $table_name ) {
-			error_log( "Table $table_name does not exist." );
+		$file_table_name = $this->get_table_name( 'files' );
+		if ( $wpdb->get_var( "SHOW TABLES LIKE '$file_table_name'" ) != $file_table_name ) {
+			error_log( "Table $file_table_name does not exist." );
 			return false;
 		}
 		return true;

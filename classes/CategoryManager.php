@@ -3,11 +3,13 @@ namespace LVAI\FileVersionManager;
 
 class CategoryManager {
 	private $wpdb;
-	private $table_name;
+	private $category_table_name;
+	private $file_table_name;
 
 	public function __construct( \wpdb $wpdb ) {
 		$this->wpdb = $wpdb;
-		$this->table_name = $wpdb->prefix . Constants::CAT_TABLE_NAME;
+		$this->category_table_name = $wpdb->prefix . Constants::CAT_TABLE_NAME;
+		$this->file_table_name = $wpdb->prefix . Constants::FILE_TABLE_NAME;
 	}
 
 	public function add_category( $cat_name, $cat_slug, $cat_parent_id, $cat_description ) {
@@ -16,7 +18,7 @@ class CategoryManager {
 		}
 
 		return $this->wpdb->insert(
-			$this->table_name,
+			$this->category_table_name,
 			[ 
 				'cat_name' => $cat_name,
 				'cat_slug' => $cat_slug,
@@ -29,7 +31,7 @@ class CategoryManager {
 
 	public function update_category( $category_id, $cat_name, $cat_description, $cat_parent_id ) {
 		return $this->wpdb->update(
-			$this->table_name,
+			$this->category_table_name,
 			[ 
 				'cat_name' => $cat_name,
 				'cat_description' => $cat_description,
@@ -43,25 +45,35 @@ class CategoryManager {
 
 	public function delete_category( $category_id ) {
 		return $this->wpdb->delete(
-			$this->table_name,
+			$this->category_table_name,
 			[ 'id' => $category_id ],
 			[ '%d' ]
 		);
 	}
 
 	public function get_categories( $search = '', $orderby = 'cat_name', $order = 'ASC' ) {
-		$query = "SELECT c.*, COUNT(f.id) as file_count, 
-				  (SELECT COUNT(*) FROM {$this->wpdb->prefix}" . Constants::FILE_TABLE_NAME . " WHERE file_category_id = c.id) as total_files
-				  FROM {$this->table_name} c 
-				  LEFT JOIN {$this->wpdb->prefix}" . Constants::FILE_TABLE_NAME . " f ON c.id = f.file_category_id";
+		$allowed_orderby = [ 'cat_name', 'id', 'cat_parent_id' ];
+		$allowed_order = [ 'ASC', 'DESC' ];
 
+		$orderby = in_array( $orderby, $allowed_orderby ) ? $orderby : 'cat_name';
+		$order = in_array( strtoupper( $order ), $allowed_order ) ? strtoupper( $order ) : 'ASC';
+
+		$query = "SELECT c.*, COUNT(f.id) as total_files
+				  FROM {$this->category_table_name} c 
+				  LEFT JOIN {$this->file_table_name} f ON c.id = f.file_category_id
+				  WHERE 1=1";
+
+		$params = [];
 		if ( ! empty( $search ) ) {
-			$query .= $this->wpdb->prepare( " WHERE c.cat_name LIKE %s", '%' . $this->wpdb->esc_like( $search ) . '%' );
+			$query .= " AND c.cat_name LIKE %s";
+			$params[] = '%' . $this->wpdb->esc_like( $search ) . '%';
 		}
 
-		$query .= " GROUP BY c.id ORDER BY " . esc_sql( $orderby ) . " " . esc_sql( $order );
+		$query .= " GROUP BY c.id ORDER BY {$orderby} {$order}";
 
-		$categories = $this->wpdb->get_results( $query, ARRAY_A );
+		$prepared_query = $params ? $this->wpdb->prepare( $query, $params ) : $query;
+		$categories = $this->wpdb->get_results( $prepared_query, ARRAY_A );
+
 		return $this->build_category_tree( $categories );
 	}
 
@@ -79,8 +91,7 @@ class CategoryManager {
 
 	public function get_categories_hierarchical( $parent_id = 0 ) {
 		$query = $this->wpdb->prepare(
-			"SELECT id, cat_name, cat_parent_id FROM {$this->table_name} WHERE cat_parent_id = %d ORDER BY cat_name ASC",
-			$parent_id
+			"SELECT id, cat_name, cat_parent_id FROM %i WHERE cat_parent_id = %d ORDER BY cat_name ASC", $this->category_table_name, $parent_id
 		);
 		$categories = $this->wpdb->get_results( $query );
 
