@@ -176,6 +176,13 @@ class MigrateFilebasePro {
 			];
 			$this->highest_id = max( $this->highest_id, intval( $file->file_id ) );
 		}
+
+		foreach ( $file_map as &$entries ) {
+			usort( $entries, function ($a, $b) {
+				return $a['id'] - $b['id'];
+			} );
+		}
+
 		return $file_map;
 	}
 
@@ -228,6 +235,8 @@ class MigrateFilebasePro {
 			$old_id = $existing_files[ $i ]->id;
 
 			$this->handle_file_conflict( $new_id, $file_name );
+
+			$this->log[] = "Updating file: " . htmlspecialchars( $file_name ) . " with ID: $new_id (was $old_id)";
 			$this->update_file_data( $file_name, $new_id, $old_id, $file_display_name, $file_category_id, $file_hash_md5, $file_hash_sha256, $file_added_by, $file_password, $file_version, $file_description );
 		}
 
@@ -284,6 +293,8 @@ class MigrateFilebasePro {
 				[ '%d' ]
 			);
 			$this->log[] = "Temporarily updated file '" . htmlspecialchars( $conflict_file->file_name ) . "' with ID $new_id to temporary ID $temp_id";
+		} else {
+			$this->log[] = "No conflict found for file: " . htmlspecialchars( $file_name ) . " with ID: $new_id";
 		}
 	}
 
