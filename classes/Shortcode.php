@@ -34,79 +34,82 @@ class Shortcode {
 		$table_name = $this->wpdb->prefix . Constants::FILE_TABLE_NAME;
 
 		if ( $atts['tag'] === 'file' || empty( $atts['tag'] ) ) {
+			$ids = array_map( 'intval', explode( ',', $atts['id'] ) );
+			$placeholders = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
 
-			$file = $this->wpdb->get_row( $this->wpdb->prepare(
-				"SELECT * FROM $table_name WHERE id = %d",
-				$atts['id']
+			$files = $this->wpdb->get_results( $this->wpdb->prepare(
+				"SELECT * FROM $table_name WHERE id IN ($placeholders)",
+				$ids
 			) );
-			return $this->file( $file, $atts );
+
+			return $this->file( $files, $atts );
 
 		} elseif ( $atts['tag'] === 'category' || $atts['tag'] === 'list' ) {
+			$ids = array_map( 'intval', explode( ',', $atts['id'] ) );
+			$placeholders = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
 
-			$file = $this->wpdb->get_row( $this->wpdb->prepare(
-				"SELECT * FROM $table_name WHERE file_category_id = %d",
-				$atts['id']
+			$files = $this->wpdb->get_results( $this->wpdb->prepare(
+				"SELECT * FROM $table_name WHERE file_category_id IN ($placeholders)",
+				$ids
 			) );
-			return $this->category( $file, $atts );
+
+			return $this->category( $files, $atts );
 		}
 	}
 
 	/**
 	 * Handles the file shortcodes.
 	 */
-	private function file( $file, $atts ) {
-		if ( $file ) {
+	private function file( $files, $atts ) {
+		if ( ! empty( $files ) ) {
 			if ( $atts['tpl'] === 'urlonly' || $atts['tpl'] === 'url' ) {
-				return esc_url( $file->file_url );
+				return esc_url( $files[0]->file_url );
 			} elseif ( $atts['tpl'] === 'table' ) {
-
-				return $this->table( $file, $atts );
-
+				return $this->table( $files, $atts );
 			} else {
-				ob_start();
-				?>
-
-				<a href="<?php echo esc_url( $file->file_url ); ?>" target="_blank">
-					<?php echo esc_html( ! empty( $file->file_display_name ) ? $file->file_display_name : $file->file_name ); ?>
-				</a>
-				<?php if ( $file->file_type ) : ?>
-					<span class="fvm-item-size uppercase"> <?php echo esc_html( $file->file_type ); ?></span>
-				<?php endif; ?>
-				<span class="fvm-item-size"> (<?php echo esc_html( size_format( $file->file_size ) ); ?>)</span>
-
-				<?php
-				return ob_get_clean();
+				if ( count( $files ) === 1 ) {
+					$file = $files[0];
+					ob_start();
+					?>
+					<a href="<?php echo esc_url( $file->file_url ); ?>" target="_blank">
+						<?php echo esc_html( ! empty( $file->file_display_name ) ? $file->file_display_name : $file->file_name ); ?>
+					</a>
+					<?php if ( $file->file_type ) : ?>
+						<span class="fvm-item-size uppercase"> <?php echo esc_html( $file->file_type ); ?></span>
+					<?php endif; ?>
+					<span class="fvm-item-size"> (<?php echo esc_html( size_format( $file->file_size ) ); ?>)</span>
+					<?php
+					return ob_get_clean();
+				} else {
+					return $this->list( $files );
+				}
 			}
 		} else {
-			return '<p>File is no longer available.</p>';
+			return '<p>File(s) no longer available.</p>';
 		}
 	}
 
 	/**
 	 * Handles the category shortcodes.
 	 */
-	private function category( $file, $atts ) {
-		if ( $file ) {
+	private function category( $files, $atts ) {
+		if ( ! empty( $files ) ) {
 			if ( $atts['tpl'] === 'thumbnail-grid-btns' ) {
-				return $this->grid( $file );
+				return $this->grid( $files );
 			} elseif ( $atts['tpl'] === 'table' ) {
-				return $this->table( $file, $atts );
+				return $this->table( $files, $atts );
 			} else {
-				return $this->list( $file );
+				return $this->list( $files );
 			}
 		} else {
-			return '<p>File is no longer available.</p>';
+			return '<p>No files available.</p>';
 		}
 	}
 
 	/**
 	 * Renders a list of files with their names, sizes, and types.
 	 */
-	private function list( $file ) {
-		$files = $this->wpdb->get_results( $this->wpdb->prepare(
-			"SELECT * FROM {$this->wpdb->prefix}" . Constants::FILE_TABLE_NAME . " WHERE file_category_id = %d",
-			$file->file_category_id
-		) );
+	private function list( $files ) {
 		ob_start();
 		?>
 		<ul class="fvm-file-list">
@@ -157,11 +160,7 @@ class Shortcode {
 	/**
 	 * Renders a grid of files with their names, sizes, and types.
 	 */
-	private function grid( $file ) {
-		$files = $this->wpdb->get_results( $this->wpdb->prepare(
-			"SELECT * FROM {$this->wpdb->prefix}" . Constants::FILE_TABLE_NAME . " WHERE file_category_id = %d",
-			$file->file_category_id
-		) );
+	private function grid( $files ) {
 		ob_start();
 		?>
 		<div class="fvm-grid">
@@ -219,18 +218,8 @@ class Shortcode {
 	/**
 	 * Renders a table of files with their names, sizes, and types.
 	 */
-	private function table( $file, $atts ) {
-		$category_id = $file->file_category_id;
-
-		$category_name = $this->wpdb->get_var( $this->wpdb->prepare(
-			"SELECT cat_name FROM {$this->wpdb->prefix}" . Constants::CAT_TABLE_NAME . " WHERE id = %d",
-			$category_id
-		) );
-
-		$files = $this->wpdb->get_results( $this->wpdb->prepare(
-			"SELECT * FROM {$this->wpdb->prefix}" . Constants::FILE_TABLE_NAME . " WHERE file_category_id = %d ORDER BY file_display_name ASC",
-			$file->file_category_id
-		) );
+	private function table( $files, $atts ) {
+		$files = is_array( $files ) ? $files : array( $files );
 
 		$has_description = array_reduce( $files, function ($carry, $file) {
 			return $carry || ! empty( $file->file_description );
@@ -255,7 +244,9 @@ class Shortcode {
 						<td><a href="<?php echo esc_url( $file->file_url ); ?>" target="_blank"
 								rel="noopener noreferrer"><?php echo esc_html( ! empty( $file->file_display_name ) ? $file->file_display_name : $file->file_name ); ?></a>
 						</td>
-						<td><?php echo esc_html( $file->file_description ); ?></td>
+						<?php if ( $has_description ) : ?>
+							<td><?php echo esc_html( $file->file_description ); ?></td>
+						<?php endif; ?>
 						<td><?php echo esc_html( $file->file_version ); ?></td>
 						<td><?php echo esc_html( size_format( $file->file_size, 1 ) ); ?></td>
 					</tr>

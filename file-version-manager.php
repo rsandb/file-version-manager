@@ -2,7 +2,7 @@
 /*
 Plugin Name: File Version Manager
 Description: Conveniently upload and update files site-wide.
-Version: 0.9.12
+Version: 0.9.13
 Author: Riley Sandborg
 Author URI: https://rileysandb.org/
 License: GPLv2 or later
@@ -18,7 +18,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-// Define PLUGIN_URL constant
 define( 'FVM\FileVersionManager\PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
 require_once __DIR__ . '/includes/Constants.php';

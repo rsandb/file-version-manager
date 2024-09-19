@@ -1,5 +1,8 @@
 <?php
+
 namespace FVM\FileVersionManager;
+
+#todo: instead of generating edit forms for each file, generate a single edit form that can be used for all files
 
 class FilePage {
 	private $file_manager;
@@ -18,7 +21,6 @@ class FilePage {
 		add_action( 'load-toplevel_page_fvm_files', [ $this, 'handle_file_deletion' ] );
 		add_action( 'load-toplevel_page_fvm_files', [ $this, 'handle_file_update' ] );
 		add_action( 'load-toplevel_page_fvm_files', [ $this, 'handle_bulk_actions' ] );
-		// add_filter( 'set-screen-option', [ $this, 'set_screen_option' ], 10, 3 );
 	}
 
 	public function add_admin_menu() {
