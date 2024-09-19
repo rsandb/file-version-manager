@@ -5,20 +5,20 @@ namespace FVM\FileVersionManager;
 class Deactivate {
 	public static function deactivate() {
 
-		global $wpdb;
-		$old_table = $wpdb->prefix . 'fvm_metadata';
-		$table_name = $wpdb->prefix . Constants::FILE_TABLE_NAME;
-		$category_table_name = $wpdb->prefix . Constants::CAT_TABLE_NAME;
+		// global $wpdb;
+		// $old_table = $wpdb->prefix . 'fvm_metadata';
+		// $table_name = $wpdb->prefix . Constants::FILE_TABLE_NAME;
+		// $category_table_name = $wpdb->prefix . Constants::CAT_TABLE_NAME;
 
 		// Drop the custom table
-		$wpdb->query( "DROP TABLE IF EXISTS $table_name" );
-		$wpdb->query( "DROP TABLE IF EXISTS $old_table" );
-		$wpdb->query( "DROP TABLE IF EXISTS $category_table_name" );
+		// $wpdb->query( "DROP TABLE IF EXISTS $table_name" );
+		// $wpdb->query( "DROP TABLE IF EXISTS $old_table" );
+		// $wpdb->query( "DROP TABLE IF EXISTS $category_table_name" );
 
 		// Delete settings
 		// delete_option( 'fvm_custom_directory' );
-		delete_option( 'fvm_debug_logs' );
-		delete_option( 'fvm_auto_increment_version' );
+		// delete_option( 'fvm_debug_logs' );
+		// delete_option( 'fvm_auto_increment_version' );
 
 		flush_rewrite_rules();
 	}

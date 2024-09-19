@@ -6,6 +6,7 @@ class Activate {
 
 	public static function activate() {
 		global $wpdb;
+
 		$table_name = $wpdb->prefix . Constants::FILE_TABLE_NAME;
 		$cat_table_name = $wpdb->prefix . Constants::CAT_TABLE_NAME;
 		$charset_collate = $wpdb->get_charset_collate();
@@ -13,6 +14,7 @@ class Activate {
 		self::create_tables( $wpdb, $table_name, $cat_table_name, $charset_collate );
 
 		require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
+
 		dbDelta( self::$cat_sql );
 		dbDelta( self::$sql );
 
