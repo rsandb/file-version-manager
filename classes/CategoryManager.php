@@ -5,11 +5,13 @@ class CategoryManager {
 	private $wpdb;
 	private $category_table_name;
 	private $file_table_name;
+	private $rel_table_name;
 
 	public function __construct( \wpdb $wpdb ) {
 		$this->wpdb = $wpdb;
 		$this->category_table_name = $wpdb->prefix . Constants::CAT_TABLE_NAME;
 		$this->file_table_name = $wpdb->prefix . Constants::FILE_TABLE_NAME;
+		$this->rel_table_name = $wpdb->prefix . Constants::REL_TABLE_NAME;
 	}
 
 	/**
@@ -95,10 +97,10 @@ class CategoryManager {
 		$orderby = in_array( $orderby, $allowed_orderby ) ? $orderby : 'cat_name';
 		$order = in_array( strtoupper( $order ), $allowed_order ) ? strtoupper( $order ) : 'ASC';
 
-		$query = "SELECT c.*, COUNT(f.id) as total_files
-				  FROM {$this->category_table_name} c 
-				  LEFT JOIN {$this->file_table_name} f ON c.id = f.file_category_id
-				  WHERE 1=1";
+		$query = "SELECT c.*, COUNT(DISTINCT r.file_id) as total_files
+                  FROM {$this->category_table_name} c 
+                  LEFT JOIN {$this->rel_table_name} r ON c.id = r.category_id
+                  WHERE 1=1";
 
 		$params = [];
 		if ( ! empty( $search ) ) {

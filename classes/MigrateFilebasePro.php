@@ -15,11 +15,13 @@ class MigrateFilebasePro {
 	private $wpdb;
 	private $file_table_name;
 	private $category_table_name;
+	private $rel_table_name;
 
 	public function __construct( $wpdb ) {
 		$this->wpdb = $wpdb;
 		$this->file_table_name = $wpdb->prefix . Constants::FILE_TABLE_NAME;
 		$this->category_table_name = $wpdb->prefix . Constants::CAT_TABLE_NAME;
+		$this->rel_table_name = $wpdb->prefix . Constants::REL_TABLE_NAME;
 	}
 
 	/**
@@ -163,10 +165,28 @@ class MigrateFilebasePro {
 	private function build_file_map( $files ) {
 		$file_map = [];
 		foreach ( $files as $file ) {
+			$categories = [];
+
+			// Check the main file_category column
+			if ( ! empty( $file->file_category ) ) {
+				$categories[] = intval( $file->file_category );
+			}
+
+			// Check additional category columns
+			for ( $i = 1; $i <= 3; $i++ ) {
+				$category_field = "file_sec_cat{$i}";
+				if ( ! empty( $file->$category_field ) ) {
+					$categories[] = intval( $file->$category_field );
+				}
+			}
+
+			// Remove duplicates and ensure unique category IDs
+			$categories = array_unique( $categories );
+
 			$file_map[ $file->file_name ][] = [ 
 				'id' => intval( $file->file_id ),
 				'file_display_name' => $file->file_display_name,
-				'file_category_id' => $file->file_category,
+				'file_categories' => $categories,
 				'file_hash_md5' => $file->file_hash,
 				'file_hash_sha256' => $file->file_hash_sha256,
 				'file_added_by' => $file->file_added_by,
@@ -182,6 +202,8 @@ class MigrateFilebasePro {
 				return $a['id'] - $b['id'];
 			} );
 		}
+
+		$this->log[] = "File map: " . print_r( $file_map, true );
 
 		return $file_map;
 	}
@@ -225,7 +247,7 @@ class MigrateFilebasePro {
 		for ( $i = 0; $i < min( count( $ids ), count( $existing_files ) ); $i++ ) {
 			$new_id = $ids[ $i ]['id'];
 			$file_display_name = $ids[ $i ]['file_display_name'];
-			$file_category_id = $ids[ $i ]['file_category_id'];
+			$file_categories = $ids[ $i ]['file_categories'];
 			$file_hash_md5 = $ids[ $i ]['file_hash_md5'];
 			$file_hash_sha256 = $ids[ $i ]['file_hash_sha256'];
 			$file_added_by = $ids[ $i ]['file_added_by'];
@@ -236,8 +258,9 @@ class MigrateFilebasePro {
 
 			$this->handle_file_conflict( $new_id, $file_name );
 
-			$this->log[] = "Updating file: " . htmlspecialchars( $file_name ) . " with ID: $new_id (was $old_id)";
-			$this->update_file_data( $file_name, $new_id, $old_id, $file_display_name, $file_category_id, $file_hash_md5, $file_hash_sha256, $file_added_by, $file_password, $file_version, $file_description );
+			$this->log[] = "Updating existing file: " . htmlspecialchars( $file_name ) . " with ID: $new_id (was $old_id)";
+
+			$this->update_file_data( $file_name, $new_id, $old_id, $file_display_name, $file_categories, $file_hash_md5, $file_hash_sha256, $file_added_by, $file_password, $file_version, $file_description );
 		}
 
 		$this->handle_extra_files( $file_name, $ids, $existing_files );
@@ -293,8 +316,6 @@ class MigrateFilebasePro {
 				[ '%d' ]
 			);
 			$this->log[] = "Temporarily updated file '" . htmlspecialchars( $conflict_file->file_name ) . "' with ID $new_id to temporary ID $temp_id";
-		} else {
-			$this->log[] = "No conflict found for file: " . htmlspecialchars( $file_name ) . " with ID: $new_id";
 		}
 	}
 
@@ -311,8 +332,7 @@ class MigrateFilebasePro {
 	 * @param string $file_password
 	 * @return void
 	 */
-	private function update_file_data( $file_name, $new_id, $old_id, $file_display_name, $file_category_id, $file_hash_md5, $file_hash_sha256, $file_added_by, $file_password, $file_version, $file_description ) {
-		$file_category_id = $file_category_id == 0 ? null : $file_category_id;
+	private function update_file_data( $file_name, $new_id, $old_id, $file_display_name, $file_categories, $file_hash_md5, $file_hash_sha256, $file_added_by, $file_password, $file_version, $file_description ) {
 		$file_version = empty( $file_version ) ? '1.0' : $file_version;
 
 		$result = $this->wpdb->update(
@@ -321,7 +341,6 @@ class MigrateFilebasePro {
 				'id' => $new_id,
 				'date_modified' => current_time( 'mysql' ),
 				'file_display_name' => $file_display_name,
-				'file_category_id' => $file_category_id,
 				'file_hash_md5' => $file_hash_md5,
 				'file_hash_sha256' => $file_hash_sha256,
 				'file_added_by' => $file_added_by,
@@ -330,12 +349,33 @@ class MigrateFilebasePro {
 				'file_description' => $file_description,
 			],
 			[ 'file_name' => $file_name, 'id' => $old_id ],
-			[ '%d', '%s', '%s', '%d', '%s', '%s', '%d', '%s', '%s', '%s' ],
+			[ '%d', '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s' ],
 			[ '%s', '%d' ]
 		);
 
 		if ( $result !== false ) {
+
+			// Delete existing category relationships
+			$this->wpdb->delete(
+				$this->rel_table_name,
+				[ 'file_id' => $new_id ],
+				[ '%d' ]
+			);
+
+			// Insert new category relationships
+			foreach ( $file_categories as $category_id ) {
+				$this->wpdb->insert(
+					$this->rel_table_name,
+					[ 
+						'file_id' => $new_id,
+						'category_id' => $category_id,
+					],
+					[ '%d', '%d' ]
+				);
+			}
+
 			$this->log[] = "Updated file: " . htmlspecialchars( $file_name ) . " with ID: $new_id (was $old_id)";
+			$this->log[] = "----------------------------------";
 		} else {
 			$this->log[] = "Error updating file: " . htmlspecialchars( $file_name ) . " with ID: $new_id";
 			throw new Exception( "Database error: " . $this->wpdb->last_error );

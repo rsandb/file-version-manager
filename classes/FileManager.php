@@ -1,15 +1,22 @@
 <?php
+
 namespace FVM\FileVersionManager;
+
+#todo: add user id to file data when uploading and editing a file
 
 class FileManager {
 	private $upload_dir;
 	private $custom_folder;
 	private $wpdb;
-	private $table_name;
+	private $file_table_name;
+	private $cat_table_name;
+	private $rel_table_name;
 
 	public function __construct( \wpdb $wpdb ) {
 		$this->wpdb = $wpdb;
-		$this->table_name = $wpdb->prefix . Constants::FILE_TABLE_NAME;
+		$this->file_table_name = $wpdb->prefix . Constants::FILE_TABLE_NAME;
+		$this->cat_table_name = $wpdb->prefix . Constants::CAT_TABLE_NAME;
+		$this->rel_table_name = $wpdb->prefix . Constants::REL_TABLE_NAME;
 		$this->custom_folder = 'filebase';
 		$this->set_upload_dir();
 	}
@@ -55,7 +62,7 @@ class FileManager {
 	 * @return void
 	 */
 	public function scan_files() {
-		$db_files = $this->wpdb->get_results( "SELECT id, file_path FROM {$this->table_name}", ARRAY_A );
+		$db_files = $this->wpdb->get_results( "SELECT id, file_path FROM {$this->file_table_name}", ARRAY_A );
 		$db_file_paths = array_column( $db_files, 'file_path', 'id' );
 
 		$existing_files = $this->scan_directory( $this->upload_dir );
@@ -95,7 +102,7 @@ class FileManager {
 		}
 
 		if ( ! empty( $values ) ) {
-			$query = "INSERT INTO {$this->table_name} 
+			$query = "INSERT INTO {$this->file_table_name} 
 					  (file_name, file_display_name, file_path, file_url, file_size, file_type, file_version, date_uploaded, date_modified) 
 					  VALUES " . implode( ', ', $placeholders );
 
@@ -106,7 +113,7 @@ class FileManager {
 	private function batch_delete_files( $file_ids ) {
 		if ( ! empty( $file_ids ) ) {
 			$placeholders = implode( ',', array_fill( 0, count( $file_ids ), '%d' ) );
-			$query = "DELETE FROM {$this->table_name} WHERE id IN ($placeholders)";
+			$query = "DELETE FROM {$this->file_table_name} WHERE id IN ($placeholders)";
 			$this->wpdb->query( $this->wpdb->prepare( $query, $file_ids ) );
 		}
 	}
@@ -174,10 +181,10 @@ class FileManager {
 			];
 
 			if ( $file_id ) {
-				$this->wpdb->update( $this->table_name, $metadata, [ 'id' => $file_id ] );
+				$this->wpdb->update( $this->file_table_name, $metadata, [ 'id' => $file_id ] );
 			} else {
 				$metadata['date_uploaded'] = $current_time;
-				$this->wpdb->insert( $this->table_name, $metadata );
+				$this->wpdb->insert( $this->file_table_name, $metadata );
 				$file_id = $this->wpdb->insert_id;
 			}
 
@@ -195,12 +202,9 @@ class FileManager {
 	 * @param string $file_version
 	 * @return bool
 	 */
-	public function update_file( $file_id, $new_file, $new_version, $file_display_name, $file_category_id, $file_description ) {
-		global $wpdb;
+	public function update_file( $file_id, $new_file, $new_version, $file_display_name, $file_description, $file_categories ) {
 
-		$table_name = $wpdb->prefix . Constants::FILE_TABLE_NAME;
-
-		$existing_file = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $table_name WHERE id = %d", $file_id ), ARRAY_A );
+		$existing_file = $this->wpdb->get_row( $this->wpdb->prepare( "SELECT * FROM $this->file_table_name WHERE id = %d", $file_id ), ARRAY_A );
 
 		if ( ! $existing_file ) {
 			error_log( "File not found for ID: $file_id" );
@@ -216,12 +220,6 @@ class FileManager {
 		if ( ! empty( $file_display_name ) ) {
 			$update_data['file_display_name'] = $file_display_name;
 			$update_format[] = '%s';
-		}
-
-		// Update file category if provided
-		if ( ! empty( $file_category_id ) ) {
-			$update_data['file_category_id'] = $file_category_id;
-			$update_format[] = '%d';
 		}
 
 		// Update file description if provided
@@ -298,8 +296,8 @@ class FileManager {
 		error_log( "Update data: " . print_r( $update_data, true ) );
 		error_log( "Update format: " . print_r( $update_format, true ) );
 
-		$result = $wpdb->update(
-			$table_name,
+		$result = $this->wpdb->update(
+			$this->file_table_name,
 			$update_data,
 			array( 'id' => $file_id ),
 			$update_format,
@@ -307,23 +305,42 @@ class FileManager {
 		);
 
 		if ( $result === false ) {
-			error_log( "Database update failed: " . $wpdb->last_error );
+			error_log( "Database update failed: " . $this->wpdb->last_error );
 			return false;
 		}
 
 		// Verify the update
-		$updated_file = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $table_name WHERE id = %d", $file_id ) );
+		$updated_file = $this->wpdb->get_row( $this->wpdb->prepare( "SELECT * FROM $this->file_table_name WHERE id = %d", $file_id ) );
+
+		// Update file categories
+		$this->update_file_categories( $file_id, $file_categories );
+
 		error_log( "Updated file data: " . print_r( $updated_file, true ) );
 
 		return true;
 	}
 
-	private function update_file_metadata( $file_name, $file_display_name, $file_path, $file_url, $file_size, $file_type, $file_version, $date_uploaded, $date_modified, $file_description ) {
-		global $wpdb;
-		$table_name = $wpdb->prefix . Constants::FILE_TABLE_NAME;
+	private function update_file_categories( $file_id, $category_ids ) {
+		// Delete existing category relationships
+		$this->wpdb->delete( $this->rel_table_name, array( 'file_id' => $file_id ), array( '%d' ) );
 
-		$result = $wpdb->insert(
-			$table_name,
+		// Insert new category relationships
+		foreach ( $category_ids as $category_id ) {
+			$this->wpdb->insert(
+				$this->rel_table_name,
+				array(
+					'file_id' => $file_id,
+					'category_id' => $category_id,
+				),
+				array( '%d', '%d' )
+			);
+		}
+	}
+
+	private function update_file_metadata( $file_name, $file_display_name, $file_path, $file_url, $file_size, $file_type, $file_version, $date_uploaded, $date_modified, $file_description ) {
+
+		$result = $this->wpdb->insert(
+			$this->file_table_name,
 			array(
 				'file_name' => $file_name,
 				'file_display_name' => $file_display_name,
@@ -340,7 +357,7 @@ class FileManager {
 		);
 
 		if ( $result === false ) {
-			error_log( 'Database insertion failed: ' . $wpdb->last_error );
+			error_log( 'Database insertion failed: ' . $this->wpdb->last_error );
 		}
 	}
 
@@ -364,7 +381,7 @@ class FileManager {
 	 * @return object|false
 	 */
 	public function get_file( $file_id ) {
-		return $this->wpdb->get_row( $this->wpdb->prepare( "SELECT * FROM {$this->table_name} WHERE id = %d", $file_id ) );
+		return $this->wpdb->get_row( $this->wpdb->prepare( "SELECT * FROM {$this->file_table_name} WHERE id = %d", $file_id ) );
 	}
 
 	/**
@@ -380,7 +397,7 @@ class FileManager {
 			if ( file_exists( $absolute_path ) ) {
 				unlink( $absolute_path );
 			}
-			return $this->wpdb->delete( $this->table_name, [ 'id' => $file_id ], [ '%d' ] );
+			return $this->wpdb->delete( $this->file_table_name, [ 'id' => $file_id ], [ '%d' ] );
 		}
 		return false;
 	}

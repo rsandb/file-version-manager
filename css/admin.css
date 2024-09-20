@@ -115,3 +115,15 @@ h2.fvm-upload-instructions {
 .upload-ui {
     margin: 2em 0;
 }
+
+.fvm-file-categories-container {
+    padding: 0 10px 0 10px;
+    border: 1px solid #c3c4c7;
+    border-radius: 5px;
+    overflow-y: auto;
+    max-height: 100px;
+}
+
+.fvm-file-categories-container-inner {
+    margin: 6px 0;
+}

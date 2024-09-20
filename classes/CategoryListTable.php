@@ -14,18 +14,20 @@ class CategoryListTable extends \WP_List_Table {
 	private $category_manager;
 	private $category_table_name;
 	private $file_table_name;
+	private $rel_table_name;
 
 	public function __construct( CategoryManager $category_manager ) {
-		global $wpdb;
-		$this->wpdb = $wpdb;
 		parent::__construct( [ 
 			'singular' => 'category',
 			'plural' => 'categories',
 			'ajax' => false,
 		] );
+		global $wpdb;
+		$this->wpdb = $wpdb;
 		$this->category_manager = $category_manager;
 		$this->category_table_name = $wpdb->prefix . Constants::CAT_TABLE_NAME;
 		$this->file_table_name = $wpdb->prefix . Constants::FILE_TABLE_NAME;
+		$this->rel_table_name = $wpdb->prefix . Constants::REL_TABLE_NAME;
 	}
 
 	public function prepare_items() {
@@ -62,7 +64,7 @@ class CategoryListTable extends \WP_List_Table {
 	}
 
 	public function get_total_items( $search = '' ) {
-		$categories = $this->get_categories( $search );
+		$categories = $this->category_manager->get_categories( $search );
 		return count( $categories );
 	}
 

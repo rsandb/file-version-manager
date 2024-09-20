@@ -3,9 +3,15 @@ namespace FVM\FileVersionManager;
 
 class Shortcode {
 	private $wpdb;
+	private $file_table_name;
+	private $cat_table_name;
+	private $rel_table_name;
 
 	public function __construct( \wpdb $wpdb ) {
 		$this->wpdb = $wpdb;
+		$this->file_table_name = $wpdb->prefix . Constants::FILE_TABLE_NAME;
+		$this->cat_table_name = $wpdb->prefix . Constants::CAT_TABLE_NAME;
+		$this->rel_table_name = $wpdb->prefix . Constants::REL_TABLE_NAME;
 	}
 
 	public function init() {
@@ -31,14 +37,12 @@ class Shortcode {
 			'title' => false,
 		), $atts, 'fvm' );
 
-		$table_name = $this->wpdb->prefix . Constants::FILE_TABLE_NAME;
-
 		if ( $atts['tag'] === 'file' || empty( $atts['tag'] ) ) {
 			$ids = array_map( 'intval', explode( ',', $atts['id'] ) );
 			$placeholders = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
 
 			$files = $this->wpdb->get_results( $this->wpdb->prepare(
-				"SELECT * FROM $table_name WHERE id IN ($placeholders)",
+				"SELECT * FROM $this->file_table_name WHERE id IN ($placeholders)",
 				$ids
 			) );
 
@@ -49,7 +53,10 @@ class Shortcode {
 			$placeholders = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
 
 			$files = $this->wpdb->get_results( $this->wpdb->prepare(
-				"SELECT * FROM $table_name WHERE file_category_id IN ($placeholders)",
+				"SELECT DISTINCT f.* 
+                FROM $this->file_table_name f
+                JOIN $this->rel_table_name r ON f.id = r.file_id
+                WHERE r.category_id IN ($placeholders)",
 				$ids
 			) );
 
@@ -94,7 +101,7 @@ class Shortcode {
 	 */
 	private function category( $files, $atts ) {
 		if ( ! empty( $files ) ) {
-			if ( $atts['tpl'] === 'thumbnail-grid-btns' ) {
+			if ( $atts['tpl'] === 'thumbnail-grid-btns' || $atts['tpl'] === 'grid' ) {
 				return $this->grid( $files );
 			} elseif ( $atts['tpl'] === 'table' ) {
 				return $this->table( $files, $atts );
@@ -225,6 +232,23 @@ class Shortcode {
 			return $carry || ! empty( $file->file_description );
 		}, false );
 
+		// Fetch categories for all files in a single query
+		$file_ids = array_column( $files, 'id' );
+		$placeholders = implode( ',', array_fill( 0, count( $file_ids ), '%d' ) );
+		$categories = $this->wpdb->get_results( $this->wpdb->prepare(
+			"SELECT r.file_id, c.cat_name 
+            FROM $this->rel_table_name r
+            JOIN $this->cat_table_name c ON r.category_id = c.id
+            WHERE r.file_id IN ($placeholders)",
+			$file_ids
+		) );
+
+		// Organize categories by file_id
+		$file_categories = [];
+		foreach ( $categories as $category ) {
+			$file_categories[ $category->file_id ][] = $category->cat_name;
+		}
+
 		ob_start();
 		?>
 		<table class="fvm-file-table">
@@ -236,6 +260,7 @@ class Shortcode {
 					<?php endif; ?>
 					<th>Version</th>
 					<th>File Size</th>
+					<th>Categories</th>
 				</tr>
 			</thead>
 			<tbody>
@@ -249,6 +274,7 @@ class Shortcode {
 						<?php endif; ?>
 						<td><?php echo esc_html( $file->file_version ); ?></td>
 						<td><?php echo esc_html( size_format( $file->file_size, 1 ) ); ?></td>
+						<td><?php echo esc_html( implode( ', ', $file_categories[ $file->id ] ?? [] ) ); ?></td>
 					</tr>
 				<?php endforeach; ?>
 			</tbody>

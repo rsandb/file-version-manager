@@ -9,24 +9,24 @@ class Activate {
 
 		$table_name = $wpdb->prefix . Constants::FILE_TABLE_NAME;
 		$cat_table_name = $wpdb->prefix . Constants::CAT_TABLE_NAME;
+		$rel_table_name = $wpdb->prefix . Constants::REL_TABLE_NAME;
 		$charset_collate = $wpdb->get_charset_collate();
 
-		self::create_tables( $wpdb, $table_name, $cat_table_name, $charset_collate );
+		self::create_tables( $wpdb, $table_name, $cat_table_name, $rel_table_name, $charset_collate );
 
 		require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
 
-		dbDelta( self::$cat_sql );
 		dbDelta( self::$sql );
-
-		self::add_foreign_key_constraint( $wpdb, $table_name, $cat_table_name );
+		dbDelta( self::$cat_sql );
+		dbDelta( self::$file_category_sql );
 
 		update_option( 'fvm_flush_rewrite_rules', true );
 	}
 
 	private static $sql;
 	private static $cat_sql;
-
-	private static function create_tables( $wpdb, $table_name, $cat_table_name, $charset_collate ) {
+	private static $file_category_sql;
+	private static function create_tables( $wpdb, $table_name, $cat_table_name, $rel_table_name, $charset_collate ) {
 
 		// Files table
 		self::$sql = $wpdb->prepare(
@@ -63,26 +63,18 @@ class Activate {
 				UNIQUE KEY cat_slug (cat_slug)
 			) $charset_collate;"
 		);
-	}
 
-	private static function add_foreign_key_constraint( $wpdb, $table_name, $cat_table_name ) {
-		$constraint_exists = $wpdb->get_var( $wpdb->prepare(
-			"SELECT COUNT(*)
-			FROM information_schema.TABLE_CONSTRAINTS
-			WHERE CONSTRAINT_SCHEMA = %s
-			AND CONSTRAINT_NAME = 'fk_file_category'
-			AND TABLE_NAME = %s",
-			$wpdb->dbname, $table_name
-		) );
-
-		if ( $constraint_exists == 0 ) {
-			$wpdb->query( $wpdb->prepare(
-				"ALTER TABLE $table_name
-				ADD CONSTRAINT fk_file_category
-				FOREIGN KEY (file_category_id) 
-				REFERENCES $cat_table_name(id) 
-				ON DELETE SET NULL"
-			) );
-		}
+		// File-Category Relationship table
+		self::$file_category_sql = $wpdb->prepare(
+			"CREATE TABLE IF NOT EXISTS $rel_table_name (
+				id mediumint(9) NOT NULL AUTO_INCREMENT,
+				file_id mediumint(9) NOT NULL,
+				category_id mediumint(9) NOT NULL,
+				PRIMARY KEY (id),
+				UNIQUE KEY file_category (file_id, category_id),
+				FOREIGN KEY (file_id) REFERENCES $table_name(id) ON DELETE CASCADE,
+				FOREIGN KEY (category_id) REFERENCES $cat_table_name(id) ON DELETE CASCADE
+			) $charset_collate;"
+		);
 	}
 }

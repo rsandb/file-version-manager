@@ -9,6 +9,10 @@ if ( ! class_exists( 'WP_List_Table' ) ) {
 
 class FileListTable extends \WP_List_Table {
 	private $file_manager;
+	private $wpdb;
+	private $file_table_name;
+	private $cat_table_name;
+	private $rel_table_name;
 
 	public function __construct( $file_manager ) {
 		parent::__construct( [ 
@@ -16,7 +20,12 @@ class FileListTable extends \WP_List_Table {
 			'plural' => 'files',
 			'ajax' => false,
 		] );
+		global $wpdb;
+		$this->wpdb = $wpdb;
 		$this->file_manager = $file_manager;
+		$this->file_table_name = $wpdb->prefix . Constants::FILE_TABLE_NAME;
+		$this->cat_table_name = $wpdb->prefix . Constants::CAT_TABLE_NAME;
+		$this->rel_table_name = $wpdb->prefix . Constants::REL_TABLE_NAME;
 	}
 
 	private function get_table_name( $table ) {
@@ -59,8 +68,6 @@ class FileListTable extends \WP_List_Table {
 	}
 
 	public function get_files( $per_page, $current_page, $orderby = 'date_modified', $order = 'desc', $search = '' ) {
-		global $wpdb;
-		$file_table_name = $this->get_table_name( 'files' );
 		$offset = ( $current_page - 1 ) * $per_page;
 
 		// Validate $orderby to prevent SQL injection
@@ -77,17 +84,28 @@ class FileListTable extends \WP_List_Table {
 
 		$search_query = '';
 		if ( ! empty( $search ) ) {
-			$search_query = $wpdb->prepare( "WHERE file_name LIKE %s OR file_display_name LIKE %s", '%' . $wpdb->esc_like( $search ) . '%', '%' . $wpdb->esc_like( $search ) . '%' );
+			$search_query = $this->wpdb->prepare(
+				"WHERE file_name LIKE %s OR file_display_name LIKE %s",
+				'%' . $this->wpdb->esc_like( $search ) . '%',
+				'%' . $this->wpdb->esc_like( $search ) . '%'
+			);
 		}
 
-		$query = "SELECT * FROM $file_table_name $search_query ORDER BY $orderby $order LIMIT %d OFFSET %d";
-		$query = $wpdb->prepare( $query, $per_page, $offset );
+		$query = "SELECT f.*, GROUP_CONCAT(c.cat_name SEPARATOR ', ') as categories
+                  FROM {$this->file_table_name} f
+                  LEFT JOIN {$this->rel_table_name} r ON f.id = r.file_id
+                  LEFT JOIN {$this->cat_table_name} c ON r.category_id = c.id
+                  $search_query
+                  GROUP BY f.id
+                  ORDER BY $orderby $order
+                  LIMIT %d OFFSET %d";
+		$query = $this->wpdb->prepare( $query, $per_page, $offset );
 
-		$results = $wpdb->get_results( $query, ARRAY_A );
+		$results = $this->wpdb->get_results( $query, ARRAY_A );
 
 		// Debug: Check if we're getting results
 		if ( empty( $results ) ) {
-			error_log( "No results found in get_files method. Query: " . $wpdb->last_query );
+			error_log( "No results found in get_files method. Query: " . $this->wpdb->last_query );
 		}
 
 		return $results;
@@ -100,15 +118,16 @@ class FileListTable extends \WP_List_Table {
 	}
 
 	public function get_total_items( $search = '' ) {
-		global $wpdb;
-		$file_table_name = $this->get_table_name( 'files' );
-
 		$search_query = '';
 		if ( ! empty( $search ) ) {
-			$search_query = $wpdb->prepare( "WHERE file_name LIKE %s OR file_display_name LIKE %s", '%' . $wpdb->esc_like( $search ) . '%', '%' . $wpdb->esc_like( $search ) . '%' );
+			$search_query = $this->wpdb->prepare(
+				"WHERE file_name LIKE %s OR file_display_name LIKE %s",
+				'%' . $this->wpdb->esc_like( $search ) . '%',
+				'%' . $this->wpdb->esc_like( $search ) . '%'
+			);
 		}
 
-		return $wpdb->get_var( "SELECT COUNT(*) FROM $file_table_name $search_query" );
+		return $this->wpdb->get_var( "SELECT COUNT(DISTINCT f.id) FROM {$this->file_table_name} f $search_query" );
 	}
 
 	public function search_box( $text, $input_id ) {
@@ -275,12 +294,24 @@ class FileListTable extends \WP_List_Table {
 							</td>
 						</tr>
 						<tr>
-							<th scope="row"><label for="file_category">File Category</label></th>
+							<th scope="row"><label for="file_categories">File Categories</label></th>
 							<td>
-								<select name="file_category_id" id="file_category">
-									<option value="">None</option>
-									<?php $this->display_category_options( $this->get_categories(), $item['file_category_id'] ); ?>
-								</select>
+								<div class="fvm-file-categories-container">
+									<div class="fvm-file-categories-container-inner">
+										<?php
+										$categories = $this->get_categories();
+										$file_categories = explode( ', ', $item['categories'] );
+										foreach ( $categories as $category ) :
+											$checked = in_array( $category->cat_name, $file_categories ) ? 'checked' : '';
+											?>
+											<label>
+												<input type="checkbox" name="file_categories[]"
+													value="<?php echo esc_attr( $category->id ); ?>" <?php echo $checked; ?>>
+												<?php echo esc_html( $category->cat_name ); ?>
+											</label><br>
+										<?php endforeach; ?>
+									</div>
+								</div>
 							</td>
 						</tr>
 						<?php if ( ! get_option( 'fvm_auto_increment_version', 1 ) ) : ?>
@@ -310,32 +341,7 @@ class FileListTable extends \WP_List_Table {
 	}
 
 	private function get_categories() {
-		global $wpdb;
-		$cat_table_name = $wpdb->prefix . Constants::CAT_TABLE_NAME;
-		$categories = $wpdb->get_results( "SELECT id, cat_name, cat_parent_id FROM $cat_table_name ORDER BY cat_parent_id ASC, cat_name ASC" );
-		return $this->organize_categories_hierarchically( $categories );
-	}
-
-	private function organize_categories_hierarchically( $categories, $parent_id = 0 ) {
-		$organized = [];
-		foreach ( $categories as $category ) {
-			if ( $category->cat_parent_id == $parent_id ) {
-				$category->children = $this->organize_categories_hierarchically( $categories, $category->id );
-				$organized[] = $category;
-			}
-		}
-		return $organized;
-	}
-
-	private function display_category_options( $categories, $selected_id, $depth = 0 ) {
-		foreach ( $categories as $category ) {
-			$padding = str_repeat( '&nbsp;', $depth * 3 );
-			$selected = ( $selected_id == $category->id ) ? 'selected' : '';
-			echo "<option value='" . esc_attr( $category->id ) . "' $selected>" . $padding . esc_html( $category->cat_name ) . "</option>";
-			if ( ! empty( $category->children ) ) {
-				$this->display_category_options( $category->children, $selected_id, $depth + 1 );
-			}
-		}
+		return $this->wpdb->get_results( "SELECT id, cat_name FROM {$this->cat_table_name} ORDER BY cat_name ASC" );
 	}
 
 	private function format_file_size( $size_in_bytes ) {

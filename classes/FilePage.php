@@ -400,33 +400,27 @@ class FilePage {
 	 */
 	public function handle_file_update() {
 		if ( isset( $_POST['update_file'] ) && isset( $_POST['file_id'] ) ) {
+			check_admin_referer( 'edit_file_' . $_POST['file_id'], 'edit_file_nonce' );
 
-			if ( isset( $_POST['update_file'] ) && isset( $_POST['file_id'] ) ) {
+			$file_id = intval( $_POST['file_id'] );
+			$new_file = isset( $_FILES['new_file'] ) ? $_FILES['new_file'] : null;
+			$file_version = isset( $_POST['file_version'] ) ? sanitize_text_field( $_POST['file_version'] ) : '';
+			$file_display_name = isset( $_POST['file_display_name'] ) ? sanitize_text_field( $_POST['file_display_name'] ) : '';
+			$file_description = isset( $_POST['file_description'] ) ? sanitize_textarea_field( $_POST['file_description'] ) : '';
+			$file_categories = isset( $_POST['file_categories'] ) ? array_map( 'intval', $_POST['file_categories'] ) : array();
 
-				check_admin_referer( 'edit_file_' . $_POST['file_id'], 'edit_file_nonce' );
+			// If auto-increment is enabled and a new file is uploaded, pass an empty version
+			$auto_increment_version = get_option( 'fvm_auto_increment_version', 1 );
+			if ( $auto_increment_version && $new_file && ! empty( $new_file['tmp_name'] ) ) {
+				$file_version = '';
+			}
 
-				$file_id = intval( $_POST['file_id'] );
-				$new_file = isset( $_FILES['new_file'] ) ? $_FILES['new_file'] : null;
-				$file_version = isset( $_POST['file_version'] ) ? sanitize_text_field( $_POST['file_version'] ) : '';
-				$file_display_name = isset( $_POST['file_display_name'] ) ? sanitize_text_field( $_POST['file_display_name'] ) : '';
-				$file_category_id = isset( $_POST['file_category_id'] ) ? intval( $_POST['file_category_id'] ) : 0;
-				$file_description = isset( $_POST['file_description'] ) ? sanitize_textarea_field( $_POST['file_description'] ) : '';
+			$update_result = $this->file_manager->update_file( $file_id, $new_file, $file_version, $file_display_name, $file_description, $file_categories );
 
-				// If auto-increment is enabled and a new file is uploaded, pass an empty version
-				$auto_increment_version = get_option( 'fvm_auto_increment_version', 1 );
-				if ( $auto_increment_version && $new_file && ! empty( $new_file['tmp_name'] ) ) {
-					$file_version = '';
-				}
-
-				$update_result = $this->file_manager->update_file( $file_id, $new_file, $file_version, $file_display_name, $file_category_id, $file_description );
-
-				if ( $update_result ) {
-					fvm_redirect_with_message( 'fvm_files', 'success', 'File updated successfully.' );
-				} else {
-					fvm_redirect_with_message( 'fvm_files', 'error', 'Error updating file.' );
-				}
+			if ( $update_result ) {
+				fvm_redirect_with_message( 'fvm_files', 'success', 'File updated successfully.' );
 			} else {
-				error_log( 'Step 8: No update action detected in handle_file_update' );
+				fvm_redirect_with_message( 'fvm_files', 'error', 'Error updating file.' );
 			}
 		}
 	}
