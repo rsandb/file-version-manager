@@ -77,3 +77,32 @@
     background-color: #f0f0f0;
     font-weight: bold;
 }
+
+/* Toggle */
+.fvm-toggle-container {
+    border: 1px solid #000;
+}
+
+.fvm-toggle-subcategory {
+    padding: 0;
+    margin: 0;
+}
+
+.fvm-toggle-subcategory li {
+    list-style: none;
+    padding: 5px 10px;
+    margin: 0;
+    background-color: #ffe1e1;
+}
+
+.fvm-toggle-subcategory li:not(:last-child) {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.fvm-file-item:nth-child(odd) {
+    background-color: #f8f8f8;
+}
+
+.fvm-file-item:nth-child(even) {
+    background-color: #ffffff;
+}
