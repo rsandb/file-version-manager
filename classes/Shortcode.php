@@ -382,11 +382,13 @@ class Shortcode {
 
 	private function render_category_toggle( $categories, $direct_files, $level = 0, $parent_id = 0 ) {
 		$has_content = false;
+		$rendered_categories = []; // Array to keep track of rendered categories
 		ob_start();
 		?>
 		<?php foreach ( $categories as $category ) : ?>
-			<?php if ( $category->cat_parent_id == $parent_id ) : ?>
+			<?php if ( $category->cat_parent_id == $parent_id && ! in_array( $category->id, $rendered_categories ) ) : ?>
 				<?php $has_content = true; ?>
+				<?php $rendered_categories[] = $category->id; // Mark this category as rendered ?>
 				<li id="fvm-category-<?php echo $category->id; ?>" class="fvm-toggle-category" data-level="<?php echo $level; ?>">
 					<span class="fvm-toggle-category-title">
 						+
