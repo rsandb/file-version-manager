@@ -280,10 +280,9 @@ class MigrateFilebasePro {
 					'id' => $file_data['id'],
 					'file_name' => $file_name,
 					'file_display_name' => $file_data['file_display_name'],
-					'file_category_id' => $file_data['file_category_id'],
 					'date_modified' => current_time( 'mysql' ),
 				],
-				[ '%d', '%s', '%s', '%d', '%s', '%s', '%s' ]
+				[ '%d', '%s', '%s', '%s' ]
 			);
 
 			if ( $result !== false ) {

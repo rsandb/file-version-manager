@@ -180,30 +180,27 @@ class FileListTable extends \WP_List_Table {
 	}
 
 	public function column_default( $item, $column_name ) {
-		// $simplified_file_types = include plugin_dir_path( __FILE__ ) . '../includes/FileTypes.php';
-
 		switch ( $column_name ) {
 			case 'file_name':
 			case 'file_type':
-				return $item[ $column_name ];
 			case 'file_version':
-				return $item[ $column_name ];
+				return esc_html( $item[ $column_name ] ?? '' );
 			case 'date_modified':
-				return date( 'Y/m/d \a\t g:i a', strtotime( $item[ $column_name ] ) );
+				return $item[ $column_name ] ? esc_html( date( 'Y/m/d \a\t g:i a', strtotime( $item[ $column_name ] ) ) ) : '';
 			case 'file_size':
-				return $this->format_file_size( $item[ $column_name ] );
+				return $item[ $column_name ] ? esc_html( $this->format_file_size( $item[ $column_name ] ) ) : '';
 			case 'shortcode':
-				$shortcode = '[fvm id="' . $item['id'] . '"]';
+				$shortcode = '[fvm id="' . esc_attr( $item['id'] ?? '' ) . '"]';
 				return sprintf(
 					'<div class="shortcode-column-container">
-                        <code style="font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px;">%s</code>
-                        <button type="button" class="button button-small copy-shortcode" data-shortcode="%s">Copy</button>
-                    </div>',
-					$shortcode,
+						<code style="font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px;">%s</code>
+						<button type="button" class="button button-small copy-shortcode" data-shortcode="%s">Copy</button>
+					</div>',
+					esc_html( $shortcode ),
 					esc_attr( $shortcode )
 				);
 			default:
-				return print_r( $item, true );
+				return esc_html( print_r( $item, true ) );
 		}
 	}
 
@@ -244,20 +241,20 @@ class FileListTable extends \WP_List_Table {
 				<span class="close">&times;</span>
 				<form method="post" enctype="multipart/form-data">
 					<?php wp_nonce_field( 'edit_file_' . $file_id, 'edit_file_nonce' ); ?>
-					<input type="hidden" name="file_id" value="<?php echo esc_attr( $file_id ); ?>">
+					<input type="hidden" name="file_id" value="<?php echo esc_attr( $file_id ?? '' ); ?>">
 					<table class="form-table">
 						<tr>
 							<th scope="row"><label for="file_display_name">File Display Name</label></th>
 							<td>
 								<input type="text" name="file_display_name" id="file_display_name"
-									value="<?php echo esc_attr( $item['file_display_name'] ); ?>" class="regular-text">
+									value="<?php echo esc_attr( $item['file_display_name'] ?? '' ); ?>" class="regular-text">
 							</td>
 						</tr>
 						<tr>
 							<th scope="row"><label for="file_name">File Name</label></th>
 							<td>
 								<p id="file_name" class="regular-text">
-									<?php echo esc_attr( $item['file_name'] ); ?>
+									<?php echo esc_attr( $item['file_name'] ?? '' ); ?>
 								</p>
 							</td>
 						</tr>
@@ -265,15 +262,15 @@ class FileListTable extends \WP_List_Table {
 							<th scope="row"><label for="file_description">Description</label></th>
 							<td>
 								<textarea name="file_description" id="file_description"
-									value="<?php echo esc_textarea( $item['file_description'] ); ?>"
-									class="regular-text"><?php echo esc_textarea( $item['file_description'] ); ?></textarea>
+									value="<?php echo esc_textarea( $item['file_description'] ?? '' ); ?>"
+									class="regular-text"><?php echo esc_textarea( $item['file_description'] ?? '' ); ?></textarea>
 							</td>
 						</tr>
 						<tr>
 							<th scope="row"><label for="md5_hash">MD5 Hash</label></th>
 							<td>
 								<p id="md5_hash" class="regular-text" style="word-break: break-all;">
-									<?php echo esc_attr( $item['file_hash_md5'] ); ?>
+									<?php echo esc_attr( $item['file_hash_md5'] ?? '' ); ?>
 								</p>
 							</td>
 						</tr>
@@ -281,7 +278,7 @@ class FileListTable extends \WP_List_Table {
 							<th scope="row"><label for="sha256_hash">SHA256 Hash</label></th>
 							<td>
 								<p id="sha256_hash" class="regular-text" style="word-break: break-all;">
-									<?php echo esc_attr( $item['file_hash_sha256'] ); ?>
+									<?php echo esc_attr( $item['file_hash_sha256'] ?? '' ); ?>
 								</p>
 							</td>
 						</tr>
@@ -289,7 +286,7 @@ class FileListTable extends \WP_List_Table {
 							<th scope="row"><label for="file_url">File URL</label></th>
 							<td>
 								<p id="file_url" class="regular-text">
-									<?php echo esc_attr( $item['file_url'] ); ?>
+									<?php echo esc_attr( $item['file_url'] ?? '' ); ?>
 								</p>
 							</td>
 						</tr>
@@ -300,14 +297,14 @@ class FileListTable extends \WP_List_Table {
 									<div class="fvm-file-categories-container-inner">
 										<?php
 										$categories = $this->get_categories();
-										$file_categories = explode( ', ', $item['categories'] );
+										$file_categories = ! empty( $item['categories'] ) ? explode( ', ', $item['categories'] ) : [];
 										foreach ( $categories as $category ) :
 											$checked = in_array( $category->cat_name, $file_categories ) ? 'checked' : '';
 											?>
 											<label>
 												<input type="checkbox" name="file_categories[]"
-													value="<?php echo esc_attr( $category->id ); ?>" <?php echo $checked; ?>>
-												<?php echo esc_html( $category->cat_name ); ?>
+													value="<?php echo esc_attr( $category->id ?? '' ); ?>" <?php echo $checked; ?>>
+												<?php echo esc_html( $category->cat_name ?? '' ); ?>
 											</label><br>
 										<?php endforeach; ?>
 									</div>
@@ -319,7 +316,7 @@ class FileListTable extends \WP_List_Table {
 								<th scope="row"><label for="file_version">Version</label></th>
 								<td>
 									<input type="number" step="0.1" min="0" name="file_version" id="file_version"
-										value="<?php echo esc_attr( $item['file_version'] ); ?>" class="regular-text">
+										value="<?php echo esc_attr( $item['file_version'] ?? '' ); ?>" class="regular-text">
 								</td>
 							</tr>
 						<?php endif; ?>
