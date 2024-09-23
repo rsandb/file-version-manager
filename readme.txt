@@ -4,7 +4,7 @@ Donate link: https://example.com/
 Tags: version, file, manager, version manager
 Requires at least: 6.6
 Tested up to: 6.6
-Stable tag: 0.10.3
+Stable tag: 0.11.0
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -27,6 +27,10 @@ Reach out to me at riley@sandb.org
 2. This is the second screen shot
 
 == Changelog ==
+
+= 0.11.0 =
+* Updated the migration method to include file and category exclusion from the file browser
+* Updated toggle template to use the exclusion settings
 
 = 0.10.2 =
 * Fixed toggle template not displaying if there were no files in the parent category

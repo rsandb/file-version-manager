@@ -408,6 +408,7 @@ class FilePage {
 			$file_display_name = isset( $_POST['file_display_name'] ) ? sanitize_text_field( $_POST['file_display_name'] ) : '';
 			$file_description = isset( $_POST['file_description'] ) ? sanitize_textarea_field( $_POST['file_description'] ) : '';
 			$file_categories = isset( $_POST['file_categories'] ) ? array_map( 'intval', $_POST['file_categories'] ) : array();
+			$file_offline = isset( $_POST['file_offline'] ) ? 1 : 0;
 
 			// If auto-increment is enabled and a new file is uploaded, pass an empty version
 			$auto_increment_version = get_option( 'fvm_auto_increment_version', 1 );
@@ -415,7 +416,7 @@ class FilePage {
 				$file_version = '';
 			}
 
-			$update_result = $this->file_manager->update_file( $file_id, $new_file, $file_version, $file_display_name, $file_description, $file_categories );
+			$update_result = $this->file_manager->update_file( $file_id, $new_file, $file_version, $file_display_name, $file_description, $file_categories, $file_offline );
 
 			if ( $update_result ) {
 				fvm_redirect_with_message( 'fvm_files', 'success', 'File updated successfully.' );

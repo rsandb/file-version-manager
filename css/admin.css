@@ -127,3 +127,12 @@ h2.fvm-upload-instructions {
 .fvm-file-categories-container-inner {
     margin: 6px 0;
 }
+
+.fvm-file-offline {
+    width: 6px;
+    height: 6px;
+    aspect-ratio: 1/1;
+    border-radius: 50%;
+    background-color: #d63639;
+    margin-left: 3px;
+}

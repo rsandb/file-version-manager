@@ -60,6 +60,7 @@ class Activate {
 				cat_slug varchar(255) NOT NULL,
 				cat_description text,
 				cat_parent_id mediumint(9) DEFAULT 0 NOT NULL,
+				cat_exclude_browser tinyint(1) NOT NULL DEFAULT 0,
 				PRIMARY KEY (id),
 				UNIQUE KEY cat_slug (cat_slug)
 			) $charset_collate;"

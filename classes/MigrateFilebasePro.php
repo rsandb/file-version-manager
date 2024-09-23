@@ -16,12 +16,14 @@ class MigrateFilebasePro {
 	private $file_table_name;
 	private $category_table_name;
 	private $rel_table_name;
+	private $file_manager;
 
 	public function __construct( $wpdb ) {
 		$this->wpdb = $wpdb;
 		$this->file_table_name = $wpdb->prefix . Constants::FILE_TABLE_NAME;
 		$this->category_table_name = $wpdb->prefix . Constants::CAT_TABLE_NAME;
 		$this->rel_table_name = $wpdb->prefix . Constants::REL_TABLE_NAME;
+		$this->file_manager = new FileManager( $wpdb );
 	}
 
 	/**
@@ -35,6 +37,11 @@ class MigrateFilebasePro {
 			$this->log[] = "----------------------------";
 			$this->log[] = "---- Starting Migration ----";
 			$this->log[] = "----------------------------\n";
+
+			// Run scan_files method before starting the migration
+			$this->log[] = "Scanning files...";
+			$this->file_manager->scan_files();
+			$this->log[] = "File scan completed.\n";
 
 			$this->import_categories();
 			$this->import_files();
@@ -72,13 +79,14 @@ class MigrateFilebasePro {
 
 		foreach ( $categories as $category ) {
 			$unique_slug = $this->get_unique_slug( $category->cat_name, $existing_categories );
-			$placeholders[] = "(%d, %s, %s, %s, %d)";
+			$placeholders[] = "(%d, %s, %s, %s, %d, %d)";
 			$values = array_merge( $values, [ 
 				$category->cat_id,
 				$category->cat_name,
 				$category->cat_description,
 				$unique_slug,
-				$category->cat_parent ? $category->cat_parent : 0
+				$category->cat_parent ? $category->cat_parent : 0,
+				$category->cat_exclude_browser ? 1 : 0,
 			] );
 
 			$this->log[] = "Imported category: ({$category->cat_id}) " . htmlspecialchars( $category->cat_name );
@@ -86,13 +94,14 @@ class MigrateFilebasePro {
 
 		$query = $this->wpdb->prepare(
 			"INSERT INTO %i
-			(id, cat_name, cat_description, cat_slug, cat_parent_id) 
+			(id, cat_name, cat_description, cat_slug, cat_parent_id, cat_exclude_browser) 
 			VALUES " . implode( ', ', $placeholders ) . "
 			ON DUPLICATE KEY UPDATE 
 			cat_name = VALUES(cat_name), 
 			cat_description = VALUES(cat_description), 
 			cat_slug = VALUES(cat_slug), 
-			cat_parent_id = VALUES(cat_parent_id)",
+			cat_parent_id = VALUES(cat_parent_id),
+			cat_exclude_browser = VALUES(cat_exclude_browser)",
 			array_merge( [ $this->category_table_name ], $values )
 		);
 
@@ -221,7 +230,7 @@ class MigrateFilebasePro {
 			if ( count( $existing_files ) > 0 ) {
 				$this->update_existing_files( $file_name, $ids, $existing_files );
 			} else {
-				$this->insert_new_files( $file_name, $ids );
+				$this->log[] = "Warning: File not found in the database: " . htmlspecialchars( $file_name ) . " with ID: " . $ids[0]['id'] . ". Skipping.";
 			}
 		}
 	}
@@ -266,34 +275,6 @@ class MigrateFilebasePro {
 		}
 
 		$this->handle_extra_files( $file_name, $ids, $existing_files );
-	}
-
-	/**
-	 * Inserts new files into the database.
-	 * @param string $file_name
-	 * @param array $ids
-	 * @return void
-	 */
-	private function insert_new_files( $file_name, array $ids ) {
-		foreach ( $ids as $file_data ) {
-			$result = $this->wpdb->insert(
-				$this->file_table_name,
-				[ 
-					'id' => $file_data['id'],
-					'file_name' => $file_name,
-					'file_display_name' => $file_data['file_display_name'],
-					'date_modified' => current_time( 'mysql' ),
-				],
-				[ '%d', '%s', '%s', '%s' ]
-			);
-
-			if ( $result !== false ) {
-				$this->log[] = "Inserted new file: " . htmlspecialchars( $file_name ) . " with ID: {$file_data['id']}";
-			} else {
-				$this->log[] = "Error inserting file: " . htmlspecialchars( $file_name ) . " with ID: {$file_data['id']}";
-				throw new Exception( "Database error: " . $this->wpdb->last_error );
-			}
-		}
 	}
 
 	/**

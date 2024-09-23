@@ -202,7 +202,7 @@ class FileManager {
 	 * @param string $file_version
 	 * @return bool
 	 */
-	public function update_file( $file_id, $new_file, $new_version, $file_display_name, $file_description, $file_categories ) {
+	public function update_file( $file_id, $new_file, $new_version, $file_display_name, $file_description, $file_categories, $file_offline ) {
 
 		$existing_file = $this->wpdb->get_row( $this->wpdb->prepare( "SELECT * FROM $this->file_table_name WHERE id = %d", $file_id ), ARRAY_A );
 
@@ -227,6 +227,9 @@ class FileManager {
 			$update_data['file_description'] = $file_description;
 			$update_format[] = '%s';
 		}
+
+		$update_data['file_offline'] = ! empty( $file_offline ) ? 1 : 0;
+		$update_format[] = '%d';
 
 		// Update version if provided or auto-increment if enabled
 		if ( ! empty( $new_version ) ) {

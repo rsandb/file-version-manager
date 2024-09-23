@@ -221,7 +221,7 @@ class FileListTable extends \WP_List_Table {
 		];
 
 		$file_icon = $this->get_file_icon_class( $item['file_type'] );
-		$file_name = sprintf( '<div style="display: flex; gap: 6px;"><div class="dashicons %s"></div> <div>%s</div></div>', $file_icon, ! empty( $item['file_display_name'] ) ? $item['file_display_name'] : $item['file_name'] );
+		$file_name = sprintf( '<div style="display: flex; gap: 6px; align-items: center;"><div class="dashicons %s"></div> <div>%s</div><div>%s</div></div>', $file_icon, ! empty( $item['file_display_name'] ) ? $item['file_display_name'] : $item['file_name'], $item['file_offline'] ? '<div class="fvm-file-offline"></div>' : '' );
 
 		return sprintf(
 			'<div class="file-row" id="file-row-%d">
@@ -323,6 +323,12 @@ class FileListTable extends \WP_List_Table {
 						<tr>
 							<th scope="row"><label for="new_file">Replace File</label></th>
 							<td><input type="file" name="new_file" id="new_file"></td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="file_offline">File Offline</label></th>
+							<td>
+								<input type="checkbox" name="file_offline" id="file_offline" value="1" <?php echo $item['file_offline'] ? 'checked' : ''; ?>>
+							</td>
 						</tr>
 					</table>
 					<p class="submit">

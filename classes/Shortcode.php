@@ -343,24 +343,24 @@ class Shortcode {
 
 	private function get_category_hierarchy( $category_id, $max_depth = 5 ) {
 		$query = $this->wpdb->prepare( "
-			WITH RECURSIVE category_tree AS (
-				SELECT c.*, 0 AS level
-				FROM {$this->cat_table_name} c
-				WHERE c.cat_parent_id = %d
-				
-				UNION ALL
-				
-				SELECT c.*, ct.level + 1
-				FROM {$this->cat_table_name} c
-				JOIN category_tree ct ON c.cat_parent_id = ct.id
-				WHERE ct.level < %d
-			)
-			SELECT ct.*, f.id AS file_id, f.file_name, f.file_display_name, f.file_url, f.file_size, f.file_type
-			FROM category_tree ct
-			LEFT JOIN {$this->rel_table_name} r ON ct.id = r.category_id
-			LEFT JOIN {$this->file_table_name} f ON r.file_id = f.id AND f.file_offline != 1
-			ORDER BY ct.level, ct.cat_name
-			LIMIT 1000
+		WITH RECURSIVE category_tree AS (
+			SELECT c.*, 0 AS level
+			FROM {$this->cat_table_name} c
+			WHERE c.cat_parent_id = %d
+			
+			UNION ALL
+			
+			SELECT c.*, ct.level + 1
+			FROM {$this->cat_table_name} c
+			JOIN category_tree ct ON c.cat_parent_id = ct.id
+			WHERE ct.level < %d
+		)
+		SELECT ct.*, f.id AS file_id, f.file_name, f.file_display_name, f.file_url, f.file_size, f.file_type
+		FROM category_tree ct
+		LEFT JOIN {$this->rel_table_name} r ON ct.id = r.category_id
+		LEFT JOIN {$this->file_table_name} f ON r.file_id = f.id AND f.file_offline != 1
+		ORDER BY ct.level, ct.cat_name
+		LIMIT 1000
 		", $category_id, $max_depth );
 
 		return $this->wpdb->get_results( $query );
@@ -382,13 +382,8 @@ class Shortcode {
 
 		foreach ( $categories as $category ) {
 			if ( $category->cat_parent_id == $parent_id && ! in_array( $category->id, $rendered_categories ) ) {
-				// Check if the category has subcategories or files
-				$has_subcategories = $this->category_has_subcategories( $categories, $category->id );
-				$has_files = $this->category_has_files( $categories, $category->id );
-
-				// Only render the category if it has subcategories or files
-				if ( $has_subcategories || $has_files ) {
-					$rendered_categories[] = $category->id;
+				$rendered_categories[] = $category->id;
+				if ( $category->cat_exclude_browser != 1 ) {
 					$output .= $this->render_category( $category, $categories, $level );
 				}
 			}
@@ -401,24 +396,6 @@ class Shortcode {
 		}
 
 		return $output;
-	}
-
-	private function category_has_subcategories( $categories, $parent_id ) {
-		foreach ( $categories as $category ) {
-			if ( $category->cat_parent_id == $parent_id ) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	private function category_has_files( $categories, $category_id ) {
-		foreach ( $categories as $item ) {
-			if ( $item->id == $category_id && $item->file_id ) {
-				return true;
-			}
-		}
-		return false;
 	}
 
 	private function render_category( $category, $all_categories, $level ) {
