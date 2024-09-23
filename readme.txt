@@ -28,6 +28,9 @@ Reach out to me at riley@sandb.org
 
 == Changelog ==
 
+= 0.10.1 =
+* Added a new template: Toggle
+
 = 0.10.0 =
 * Added a new table to handle file-category relationships
 * Updated edit file UI to reflect changes
