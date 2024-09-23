@@ -221,7 +221,7 @@ class FileListTable extends \WP_List_Table {
 		];
 
 		$file_icon = $this->get_file_icon_class( $item['file_type'] );
-		$file_name = sprintf( '<div style="display: flex; gap: 6px; align-items: center;"><div class="dashicons %s"></div> <div>%s</div><div>%s</div></div>', $file_icon, ! empty( $item['file_display_name'] ) ? $item['file_display_name'] : $item['file_name'], $item['file_offline'] ? '<div class="fvm-file-offline"></div>' : '' );
+		$file_name = sprintf( '<div style="display: flex;"><div class="dashicons %s" style="margin-right: 6px;"></div> <div>%s</div><div>%s</div></div>', $file_icon, ! empty( $item['file_display_name'] ) ? $item['file_display_name'] : $item['file_name'], $item['file_offline'] ? '<div class="fvm-file-offline"></div>' : '' );
 
 		return sprintf(
 			'<div class="file-row" id="file-row-%d">

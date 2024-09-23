@@ -129,10 +129,11 @@ h2.fvm-upload-instructions {
 }
 
 .fvm-file-offline {
+    margin-left: 4px;
+    margin-top: 6px;
     width: 6px;
     height: 6px;
     aspect-ratio: 1/1;
     border-radius: 50%;
     background-color: #d63639;
-    margin-left: 3px;
 }

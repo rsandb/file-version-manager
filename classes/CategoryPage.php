@@ -237,8 +237,9 @@ class CategoryPage {
 		$cat_name = sanitize_text_field( $_POST['cat_name'] );
 		$cat_description = sanitize_textarea_field( $_POST['cat_description'] );
 		$cat_parent_id = intval( $_POST['cat_parent_id'] );
+		$cat_exclude_browser = isset( $_POST['cat_exclude_browser'] ) ? 1 : 0;
 
-		$update_result = $this->category_manager->update_category( $category_id, $cat_name, $cat_description, $cat_parent_id );
+		$update_result = $this->category_manager->update_category( $category_id, $cat_name, $cat_description, $cat_parent_id, $cat_exclude_browser );
 
 		if ( $update_result === false ) {
 			fvm_redirect_with_message( 'fvm_categories', 'error', 'Failed to update category.' );

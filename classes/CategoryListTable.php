@@ -207,6 +207,14 @@ class CategoryListTable extends \WP_List_Table {
 								</select>
 							</td>
 						</tr>
+						<tr>
+							<th scope="row"><label for="cat_exclude_browser_<?php echo esc_attr( $category_id ); ?>">Exclude
+									from toggles</label></th>
+							<td>
+								<input type="checkbox" name="cat_exclude_browser"
+									id="cat_exclude_browser_<?php echo esc_attr( $category_id ); ?>" value="1" <?php checked( $item['cat_exclude_browser'], 1 ); ?>>
+							</td>
+						</tr>
 					</table>
 					<p class="submit">
 						<input type="submit" name="update_category" id="update_category_<?php echo esc_attr( $category_id ); ?>"

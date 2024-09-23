@@ -42,11 +42,12 @@ class CategoryManager {
 	 * @param int $cat_parent_id The new parent ID of the category.
 	 * @return bool|int Returns true on success, false on failure.
 	 */
-	public function update_category( $category_id, $cat_name, $cat_description, $cat_parent_id ) {
+	public function update_category( $category_id, $cat_name, $cat_description, $cat_parent_id, $cat_exclude_browser ) {
 		$data = array_filter( [ 
 			'cat_name' => $cat_name,
 			'cat_description' => $cat_description,
 			'cat_parent_id' => $cat_parent_id,
+			'cat_exclude_browser' => $cat_exclude_browser,
 		], function ($value) {
 			return $value !== null;
 		} );
@@ -56,7 +57,7 @@ class CategoryManager {
 		}
 
 		$formats = array_map( function ($key) {
-			return $key === 'cat_parent_id' ? '%d' : '%s';
+			return $key === 'cat_parent_id' || $key === 'cat_exclude_browser' ? '%d' : '%s';
 		}, array_keys( $data ) );
 
 		return $this->wpdb->update(
