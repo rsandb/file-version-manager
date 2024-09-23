@@ -100,13 +100,16 @@ class Shortcode {
 	 * Handles the category shortcodes.
 	 */
 	private function category( $files, $atts ) {
+
+		if ( $atts['tpl'] === 'toggle' ) {
+			return $this->toggle( $files, $atts );
+		}
+
 		if ( ! empty( $files ) ) {
 			if ( $atts['tpl'] === 'thumbnail-grid-btns' || $atts['tpl'] === 'grid' ) {
 				return $this->grid( $files );
 			} elseif ( $atts['tpl'] === 'table' ) {
 				return $this->table( $files, $atts );
-			} elseif ( $atts['tpl'] === 'toggle' ) {
-				return $this->toggle( $files, $atts );
 			} else {
 				return $this->list( $files );
 			}
@@ -296,6 +299,11 @@ class Shortcode {
 		$category_id = intval( $atts['id'] );
 		$title = isset( $atts['title'] ) ? sanitize_text_field( $atts['title'] ) : '';
 
+		// Handle the case where category_id is 0
+		if ( $category_id === 0 ) {
+			return '<p>Invalid category ID.</p>';
+		}
+
 		// Fetch categories and files
 		$categories = $this->get_category_hierarchy( $category_id );
 		$direct_files = $this->get_direct_files( $category_id );
@@ -303,37 +311,41 @@ class Shortcode {
 		// Render the toggle
 		ob_start();
 		?>
-		<?php if ( ! empty( $title ) ) : ?>
-			<h2 class="fvm-toggle-title"><?php echo esc_html( $title ); ?></h2>
-		<?php endif; ?>
-		<ul id="fvm-toggle-<?php echo $category_id; ?>" class="fvm-toggle-container">
-			<?php echo $this->render_category_toggle( $categories, $direct_files, 0, $category_id ); ?>
-		</ul>
+		<?php if ( $categories || $direct_files ) : ?>
+			<?php if ( ! empty( $title ) ) : ?>
+				<h2 class="fvm-toggle-title"><?php echo esc_html( $title ); ?></h2>
+			<?php endif; ?>
+			<ul id="fvm-toggle-<?php echo $category_id; ?>" class="fvm-toggle-container">
+				<?php echo $this->render_category_toggle( $categories, $direct_files, 0, $category_id ); ?>
+			</ul>
 
-		<script>
-			document.addEventListener("DOMContentLoaded", function () {
-				var toggles = document.querySelectorAll(".fvm-toggle-category > span");
-				toggles.forEach(function (toggle) {
-					var content = toggle.nextElementSibling;
-					toggle.setAttribute("aria-expanded", "false");
-					content.setAttribute("aria-hidden", "true");
+			<script>
+				document.addEventListener("DOMContentLoaded", function () {
+					var toggles = document.querySelectorAll(".fvm-toggle-category > span");
+					toggles.forEach(function (toggle) {
+						var content = toggle.nextElementSibling;
+						toggle.setAttribute("aria-expanded", "false");
+						content.setAttribute("aria-hidden", "true");
 
-					toggle.addEventListener("click", function () {
-						var isExpanded = toggle.getAttribute("aria-expanded") === "true";
-						toggle.setAttribute("aria-expanded", !isExpanded);
-						content.setAttribute("aria-hidden", isExpanded);
+						toggle.addEventListener("click", function () {
+							var isExpanded = toggle.getAttribute("aria-expanded") === "true";
+							toggle.setAttribute("aria-expanded", !isExpanded);
+							content.setAttribute("aria-hidden", isExpanded);
 
-						content.classList.toggle("active");
-						content.style.display = isExpanded ? "none" : "block";
+							content.classList.toggle("active");
+							content.style.display = isExpanded ? "none" : "block";
 
-						// Toggle the '+' to '-' and vice versa
-						// toggle.textContent = toggle.textContent.replace(/^[+-]/, isExpanded ? '+' : '-');
+							// Toggle the '+' to '-' and vice versa
+							// toggle.textContent = toggle.textContent.replace(/^[+-]/, isExpanded ? '+' : '-');
+						});
 					});
 				});
-			});
-		</script>
-		<?php
+			</script>
+		<?php else : ?>
+			<p>No files available.</p>
+		<?php endif; ?>
 
+		<?php
 		return ob_get_clean();
 	}
 
