@@ -96,8 +96,18 @@ ul.fvm-toggle-container > li:first-child {
     border-top: none;
 }
 
-ul.fvm-toggle-container li > ul > li span.fvm-toggle-category-title {
+ul.fvm-toggle-container li > ul > li > span.fvm-toggle-category-title {
     padding-left: 3rem;
+}
+
+ul.fvm-toggle-container
+    li
+    > ul
+    > li
+    > ul
+    > li
+    > span.fvm-toggle-category-title {
+    padding-left: 6rem;
 }
 
 ul.fvm-toggle-container li > ul > li.fvm-toggle-file > span {

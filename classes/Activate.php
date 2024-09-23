@@ -42,6 +42,7 @@ class Activate {
 				file_hash_md5 char(32),
 				file_hash_sha256 char(64),
 				file_added_by mediumint(9),
+				file_offline tinyint(1) NOT NULL DEFAULT 0,
 				file_password varchar(255),
 				file_version DECIMAL(5,1) NOT NULL,
 				file_category_id mediumint(9),

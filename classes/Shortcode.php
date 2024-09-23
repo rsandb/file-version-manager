@@ -42,7 +42,7 @@ class Shortcode {
 			$placeholders = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
 
 			$files = $this->wpdb->get_results( $this->wpdb->prepare(
-				"SELECT * FROM $this->file_table_name WHERE id IN ($placeholders)",
+				"SELECT * FROM $this->file_table_name WHERE id IN ($placeholders) AND file_offline != 1",
 				$ids
 			) );
 
@@ -54,9 +54,9 @@ class Shortcode {
 
 			$files = $this->wpdb->get_results( $this->wpdb->prepare(
 				"SELECT DISTINCT f.* 
-                FROM $this->file_table_name f
-                JOIN $this->rel_table_name r ON f.id = r.file_id
-                WHERE r.category_id IN ($placeholders)",
+				FROM $this->file_table_name f
+				JOIN $this->rel_table_name r ON f.id = r.file_id
+				WHERE r.category_id IN ($placeholders) AND f.file_offline != 1",
 				$ids
 			) );
 
@@ -298,59 +298,51 @@ class Shortcode {
 	public function toggle( $files, $atts ) {
 		$category_id = intval( $atts['id'] );
 		$title = isset( $atts['title'] ) ? sanitize_text_field( $atts['title'] ) : '';
+		$max_depth = isset( $atts['max_depth'] ) ? intval( $atts['max_depth'] ) : 5;
 
-		// Handle the case where category_id is 0
 		if ( $category_id === 0 ) {
 			return '<p>Invalid category ID.</p>';
 		}
 
-		// Fetch categories and files
-		$categories = $this->get_category_hierarchy( $category_id );
+		$categories = $this->get_category_hierarchy( $category_id, $max_depth );
 		$direct_files = $this->get_direct_files( $category_id );
 
-		// Render the toggle
+		if ( empty( $categories ) && empty( $direct_files ) ) {
+			return '<p>No files available.</p>';
+		}
+
 		ob_start();
 		?>
-		<?php if ( $categories || $direct_files ) : ?>
-			<?php if ( ! empty( $title ) ) : ?>
-				<h2 class="fvm-toggle-title"><?php echo esc_html( $title ); ?></h2>
-			<?php endif; ?>
-			<ul id="fvm-toggle-<?php echo $category_id; ?>" class="fvm-toggle-container">
-				<?php echo $this->render_category_toggle( $categories, $direct_files, 0, $category_id ); ?>
-			</ul>
-
-			<script>
-				document.addEventListener("DOMContentLoaded", function () {
-					var toggles = document.querySelectorAll(".fvm-toggle-category > span");
-					toggles.forEach(function (toggle) {
-						var content = toggle.nextElementSibling;
-						toggle.setAttribute("aria-expanded", "false");
-						content.setAttribute("aria-hidden", "true");
-
-						toggle.addEventListener("click", function () {
-							var isExpanded = toggle.getAttribute("aria-expanded") === "true";
-							toggle.setAttribute("aria-expanded", !isExpanded);
-							content.setAttribute("aria-hidden", isExpanded);
-
-							content.classList.toggle("active");
-							content.style.display = isExpanded ? "none" : "block";
-
-							// Toggle the '+' to '-' and vice versa
-							// toggle.textContent = toggle.textContent.replace(/^[+-]/, isExpanded ? '+' : '-');
-						});
-					});
-				});
-			</script>
-		<?php else : ?>
-			<p>No files available.</p>
+		<?php if ( ! empty( $title ) ) : ?>
+			<h2 class="fvm-toggle-title"><?php echo esc_html( $title ); ?></h2>
 		<?php endif; ?>
+		<ul id="fvm-toggle-<?php echo $category_id; ?>" class="fvm-toggle-container">
+			<?php echo $this->render_category_toggle( $categories, $direct_files, 0, $category_id ); ?>
+		</ul>
 
+		<script>
+			document.addEventListener("DOMContentLoaded", function () {
+				const toggleContainer = document.getElementById('fvm-toggle-<?php echo $category_id; ?>');
+				toggleContainer.addEventListener('click', function (e) {
+					const toggle = e.target.closest('.fvm-toggle-category-title');
+					if (toggle) {
+						const content = toggle.nextElementSibling;
+						const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
+						toggle.setAttribute('aria-expanded', !isExpanded);
+						content.setAttribute('aria-hidden', isExpanded);
+						content.classList.toggle('active');
+						content.style.display = isExpanded ? 'none' : 'block';
+						toggle.textContent = toggle.textContent.replace(/^[+-]/, isExpanded ? '+' : '-');
+					}
+				});
+			});
+		</script>
 		<?php
 		return ob_get_clean();
 	}
 
-	private function get_category_hierarchy( $category_id ) {
-		return $this->wpdb->get_results( $this->wpdb->prepare( "
+	private function get_category_hierarchy( $category_id, $max_depth = 5 ) {
+		$query = $this->wpdb->prepare( "
 			WITH RECURSIVE category_tree AS (
 				SELECT c.*, 0 AS level
 				FROM {$this->cat_table_name} c
@@ -361,13 +353,17 @@ class Shortcode {
 				SELECT c.*, ct.level + 1
 				FROM {$this->cat_table_name} c
 				JOIN category_tree ct ON c.cat_parent_id = ct.id
+				WHERE ct.level < %d
 			)
 			SELECT ct.*, f.id AS file_id, f.file_name, f.file_display_name, f.file_url, f.file_size, f.file_type
 			FROM category_tree ct
 			LEFT JOIN {$this->rel_table_name} r ON ct.id = r.category_id
-			LEFT JOIN {$this->file_table_name} f ON r.file_id = f.id
+			LEFT JOIN {$this->file_table_name} f ON r.file_id = f.id AND f.file_offline != 1
 			ORDER BY ct.level, ct.cat_name
-		", $category_id ) );
+			LIMIT 1000
+		", $category_id, $max_depth );
+
+		return $this->wpdb->get_results( $query );
 	}
 
 	private function get_direct_files( $category_id ) {
@@ -375,73 +371,103 @@ class Shortcode {
 			SELECT f.*
 			FROM {$this->rel_table_name} r
 			JOIN {$this->file_table_name} f ON r.file_id = f.id
-			WHERE r.category_id = %d
+			WHERE r.category_id = %d AND f.file_offline != 1
 			ORDER BY f.file_name
 		", $category_id ) );
 	}
 
 	private function render_category_toggle( $categories, $direct_files, $level = 0, $parent_id = 0 ) {
-		$has_content = false;
-		$rendered_categories = []; // Array to keep track of rendered categories
-		ob_start();
-		?>
-		<?php foreach ( $categories as $category ) : ?>
-			<?php if ( $category->cat_parent_id == $parent_id && ! in_array( $category->id, $rendered_categories ) ) : ?>
-				<?php $has_content = true; ?>
-				<?php $rendered_categories[] = $category->id; // Mark this category as rendered ?>
-				<li id="fvm-category-<?php echo $category->id; ?>" class="fvm-toggle-category" data-level="<?php echo $level; ?>">
-					<span class="fvm-toggle-category-title">
-						+
-						<?php echo esc_html( $category->cat_name ); ?>
-					</span>
-					<ul class="fvm-toggle-content" style="display: none;">
-						<?php
-						// Recursively render subcategories
-						$subcategory_content = $this->render_category_toggle( $categories, [], $level + 1, $category->id );
-						echo $subcategory_content;
+		$output = '';
+		$rendered_categories = [];
 
-						$category_files = array_filter( $categories, function ($item) use ($category) {
-							return $item->id == $category->id && $item->file_id;
-						} );
-						foreach ( $category_files as $file ) {
-							echo $this->render_file_item( $file, $level + 1 );
-						}
-						?>
-					</ul>
-				</li>
-			<?php endif; ?>
-		<?php endforeach; ?>
+		foreach ( $categories as $category ) {
+			if ( $category->cat_parent_id == $parent_id && ! in_array( $category->id, $rendered_categories ) ) {
+				// Check if the category has subcategories or files
+				$has_subcategories = $this->category_has_subcategories( $categories, $category->id );
+				$has_files = $this->category_has_files( $categories, $category->id );
 
-		<?php if ( $level == 0 ) : ?>
-			<?php foreach ( $direct_files as $file ) : ?>
-				<?php $has_content = true; ?>
-				<?php echo $this->render_file_item( $file, $level ); ?>
-			<?php endforeach; ?>
-		<?php endif; ?>
+				// Only render the category if it has subcategories or files
+				if ( $has_subcategories || $has_files ) {
+					$rendered_categories[] = $category->id;
+					$output .= $this->render_category( $category, $categories, $level );
+				}
+			}
+		}
 
-		<?php
-		$output = ob_get_clean();
-		return $has_content ? $output : '';
+		if ( $level == 0 ) {
+			foreach ( $direct_files as $file ) {
+				$output .= $this->render_file_item( $file, $level );
+			}
+		}
+
+		return $output;
+	}
+
+	private function category_has_subcategories( $categories, $parent_id ) {
+		foreach ( $categories as $category ) {
+			if ( $category->cat_parent_id == $parent_id ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private function category_has_files( $categories, $category_id ) {
+		foreach ( $categories as $item ) {
+			if ( $item->id == $category_id && $item->file_id ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private function render_category( $category, $all_categories, $level ) {
+		$subcategories = $this->render_category_toggle( $all_categories, [], $level + 1, $category->id );
+		$category_files = array_filter( $all_categories, function ($item) use ($category) {
+			return $item->id == $category->id && $item->file_id;
+		} );
+
+		$files_output = '';
+		foreach ( $category_files as $file ) {
+			$files_output .= $this->render_file_item( $file, $level + 1 );
+		}
+
+		return sprintf(
+			'<li id="fvm-category-%1$d" class="fvm-toggle-category" data-level="%2$d">
+				<span class="fvm-toggle-category-title" aria-expanded="false">
+					+ %3$s
+				</span>
+				<ul class="fvm-toggle-content" style="display: none;" aria-hidden="true">
+					%4$s
+					%5$s
+				</ul>
+			</li>',
+			$category->id,
+			$level,
+			esc_html( $category->cat_name ),
+			$subcategories,
+			$files_output
+		);
 	}
 
 	private function render_file_item( $file, $level ) {
-		ob_start();
-		?>
-		<li id="fvm-file-<?php echo $file->id; ?>" class="fvm-toggle-file" data-level="<?php echo $level; ?>">
-			<span>
-				<a href="<?php echo esc_url( $file->file_url ); ?>" title="<?php echo esc_attr( $file->file_display_name ); ?>"
-					target="_blank" rel="noopener noreferrer">
-					<?php echo esc_html( ! empty( $file->file_display_name ) ? $file->file_display_name : $file->file_name ); ?>
-				</a>
-				<span class="fvm-file-item-meta">
-					<?php if ( $file->file_type ) : ?>
-						<span><?php echo esc_html( $file->file_type ); ?></span>
-					<?php endif; ?>
-					<span>(<?php echo esc_html( size_format( $file->file_size ) ); ?>)</span>
+		$file_name = ! empty( $file->file_display_name ) ? $file->file_display_name : $file->file_name;
+		return sprintf(
+			'<li id="fvm-file-%1$d" class="fvm-toggle-file" data-level="%2$d">
+				<span>
+					<a href="%3$s" title="%4$s" target="_blank" rel="noopener noreferrer">%4$s</a>
+					<span class="fvm-file-item-meta">
+						%5$s
+						<span>(%6$s)</span>
+					</span>
 				</span>
-			</span>
-		</li>
-		<?php
-		return ob_get_clean();
+			</li>',
+			$file->id,
+			$level,
+			esc_url( $file->file_url ),
+			esc_html( $file_name ),
+			$file->file_type ? '<span>' . esc_html( $file->file_type ) . '</span>' : '',
+			esc_html( size_format( $file->file_size ) )
+		);
 	}
 }

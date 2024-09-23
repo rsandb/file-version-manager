@@ -190,6 +190,7 @@ class MigrateFilebasePro {
 				'file_hash_md5' => $file->file_hash,
 				'file_hash_sha256' => $file->file_hash_sha256,
 				'file_added_by' => $file->file_added_by,
+				'file_offline' => $file->file_offline,
 				'file_password' => $file->file_password,
 				'file_version' => $file->file_version,
 				'file_description' => $file->file_description,
@@ -251,6 +252,7 @@ class MigrateFilebasePro {
 			$file_hash_md5 = $ids[ $i ]['file_hash_md5'];
 			$file_hash_sha256 = $ids[ $i ]['file_hash_sha256'];
 			$file_added_by = $ids[ $i ]['file_added_by'];
+			$file_offline = $ids[ $i ]['file_offline'];
 			$file_password = $ids[ $i ]['file_password'];
 			$file_version = $ids[ $i ]['file_version'];
 			$file_description = $ids[ $i ]['file_description'];
@@ -260,7 +262,7 @@ class MigrateFilebasePro {
 
 			$this->log[] = "Updating existing file: " . htmlspecialchars( $file_name ) . " with ID: $new_id (was $old_id)";
 
-			$this->update_file_data( $file_name, $new_id, $old_id, $file_display_name, $file_categories, $file_hash_md5, $file_hash_sha256, $file_added_by, $file_password, $file_version, $file_description );
+			$this->update_file_data( $file_name, $new_id, $old_id, $file_display_name, $file_categories, $file_hash_md5, $file_hash_sha256, $file_added_by, $file_offline, $file_password, $file_version, $file_description );
 		}
 
 		$this->handle_extra_files( $file_name, $ids, $existing_files );
@@ -331,7 +333,7 @@ class MigrateFilebasePro {
 	 * @param string $file_password
 	 * @return void
 	 */
-	private function update_file_data( $file_name, $new_id, $old_id, $file_display_name, $file_categories, $file_hash_md5, $file_hash_sha256, $file_added_by, $file_password, $file_version, $file_description ) {
+	private function update_file_data( $file_name, $new_id, $old_id, $file_display_name, $file_categories, $file_hash_md5, $file_hash_sha256, $file_added_by, $file_offline, $file_password, $file_version, $file_description ) {
 		$file_version = empty( $file_version ) ? '1.0' : $file_version;
 
 		$result = $this->wpdb->update(
@@ -343,6 +345,7 @@ class MigrateFilebasePro {
 				'file_hash_md5' => $file_hash_md5,
 				'file_hash_sha256' => $file_hash_sha256,
 				'file_added_by' => $file_added_by,
+				'file_offline' => $file_offline,
 				'file_password' => $file_password,
 				'file_version' => $file_version,
 				'file_description' => $file_description,
