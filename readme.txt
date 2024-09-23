@@ -28,6 +28,9 @@ Reach out to me at riley@sandb.org
 
 == Changelog ==
 
+= 0.11.1 =
+* Visual changes
+
 = 0.11.0 =
 * Updated the migration method to include file and category exclusion from the file browser
 * Updated toggle template to use the exclusion settings
