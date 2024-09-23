@@ -329,10 +329,10 @@ class MigrateFilebasePro {
 				'file_offline' => $file_offline,
 				'file_password' => $file_password,
 				'file_version' => $file_version,
-				'file_description' => $file_description,
+				'file_description' => $file_description ?: null,
 			],
 			[ 'file_name' => $file_name, 'id' => $old_id ],
-			[ '%d', '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s' ],
+			[ '%d', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%s', '%s' ],
 			[ '%s', '%d' ]
 		);
 
