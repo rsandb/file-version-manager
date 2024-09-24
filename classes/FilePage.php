@@ -124,8 +124,10 @@ class FilePage {
 
 			<div id="edit-modal" class="edit-modal" style="display:none;">
 				<form id="edit-form" method="post" enctype="multipart/form-data">
+
 					<?php wp_nonce_field( 'edit_file', 'edit_file_nonce' ); ?>
 					<input type="hidden" name="file_id" id="edit-file-id" value="">
+
 					<div class="edit-modal-content-container">
 						<div class="edit-modal-content">
 							<span class="close">&times;</span>
@@ -224,18 +226,6 @@ class FilePage {
 											readonly disabled>
 									</td>
 								</tr>
-								<!-- <tr>
-									<th scope="row"><label for="new_file">Replace File</label></th>
-									<td>
-										<input type="file" name="new_file" id="new_file">
-									</td>
-								</tr> -->
-								<!-- <tr>
-									<th scope="row"><label for="file_offline">File Offline</label></th>
-									<td>
-										<input type="checkbox" name="file_offline" id="file_offline" value="1">
-									</td>
-								</tr> -->
 							</table>
 						</div>
 						<div class="fvm-edit-modal-footer">
@@ -271,13 +261,6 @@ class FilePage {
 				$this->wp_list_table->display();
 				?>
 			</form>
-
-			<?php
-			// Add modals for each file
-			foreach ( $this->wp_list_table->items as $item ) {
-				echo $this->wp_list_table->get_edit_form_html( $item['id'], $item );
-			}
-			?>
 
 			<script type="text/javascript">
 				document.addEventListener('DOMContentLoaded', function () {
@@ -628,6 +611,7 @@ class FilePage {
 	public function handle_file_update() {
 		if ( isset( $_POST['update_file'] ) && isset( $_POST['file_id'] ) ) {
 			$file_id = intval( $_POST['file_id'] );
+
 			check_admin_referer( 'edit_file_' . $file_id, 'edit_file_nonce' );
 
 			$file_id = intval( $_POST['file_id'] );

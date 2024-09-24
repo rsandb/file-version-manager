@@ -435,7 +435,6 @@ class FileManager {
 			];
 		}, $categories );
 
-		// Add nonce to the file data
 		$file_data['nonce'] = wp_create_nonce( 'edit_file_' . $file_id );
 
 		return $file_data;

@@ -167,4 +167,40 @@ class CategoryManager {
 		return $categories;
 	}
 
+	public function display_category_options( $categories, $depth = 0 ) {
+		foreach ( $categories as $category ) {
+			echo '<option value="' . esc_attr( $category->id ) . '">'
+				. str_repeat( '&nbsp;', $depth * 3 ) . esc_html( $category->cat_name )
+				. '</option>';
+
+			if ( ! empty( $category->children ) ) {
+				$this->display_category_options( $category->children, $depth + 1 );
+			}
+		}
+	}
+
+	public function get_category( $category_id ) {
+		return $this->wpdb->get_row(
+			$this->wpdb->prepare(
+				"SELECT * FROM {$this->category_table_name} WHERE id = %d",
+				$category_id
+			)
+		);
+	}
+
+	public function get_category_data( $category_id ) {
+		$category = $this->get_category( $category_id );
+		if ( ! $category ) {
+			return false;
+		}
+
+		$category_data = (array) $category;
+
+		$categories = $this->get_categories_hierarchical();
+		$category_data['parent_categories'] = $categories;
+
+		$category_data['nonce'] = wp_create_nonce( 'edit_category_' . $category_id );
+
+		return $category_data;
+	}
 }

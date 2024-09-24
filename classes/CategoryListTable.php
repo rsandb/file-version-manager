@@ -156,76 +156,16 @@ class CategoryListTable extends \WP_List_Table {
 			),
 		];
 
+		$cat_name = sprintf( '<div style="display: flex;"><div>%s %s</div><div>%s</div></div>', $indent, $item['cat_name'], $item['cat_exclude_browser'] ? '<div class="fvm-file-offline"></div>' : '' );
+
 		return sprintf(
-			'%s%s %s',
-			$indent,
-			$item['cat_name'],
+			'<div class="file-row" id="cat-row-%d">
+				<div class="file-info">%s %s</div>
+			</div>',
+			$item['id'],
+			$cat_name,
 			$this->row_actions( $actions )
 		);
-	}
-
-	public function get_edit_form_html( $category_id, $item ) {
-		ob_start();
-		?>
-		<div id="edit-modal-<?php echo esc_attr( $category_id ); ?>" class="edit-modal" style="display:none;">
-			<div class="edit-modal-content">
-				<span class="close">&times;</span>
-				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-					<input type="hidden" name="action" value="update_category">
-					<?php wp_nonce_field( 'edit_category_' . $category_id, 'edit_category_nonce' ); ?>
-					<input type="hidden" name="category_id" value="<?php echo esc_attr( $category_id ); ?>">
-					<table class="form-table">
-						<tr>
-							<th scope="row"><label for="cat_name_<?php echo esc_attr( $category_id ); ?>">Category Name</label>
-							</th>
-							<td>
-								<input type="text" name="cat_name" id="cat_name_<?php echo esc_attr( $category_id ); ?>"
-									value="<?php echo esc_attr( $item['cat_name'] ); ?>" class="regular-text" required>
-							</td>
-						</tr>
-						<tr>
-							<th scope="row"><label
-									for="cat_description_<?php echo esc_attr( $category_id ); ?>">Description</label></th>
-							<td>
-								<textarea name="cat_description" id="cat_description_<?php echo esc_attr( $category_id ); ?>"
-									rows="3"
-									class="large-text"><?php echo esc_textarea( $item['cat_description'] ); ?></textarea>
-							</td>
-						</tr>
-						<tr>
-							<th scope="row"><label for="cat_parent_id_<?php echo esc_attr( $category_id ); ?>">Parent
-									Category</label></th>
-							<td>
-								<select name="cat_parent_id" id="cat_parent_id_<?php echo esc_attr( $category_id ); ?>">
-									<option value="0">None</option>
-									<?php
-									$categories = $this->category_manager->get_categories_hierarchical();
-									if ( ! empty( $categories ) ) {
-										$this->display_category_options( $categories, $item['cat_parent_id'], $category_id );
-									}
-									?>
-								</select>
-							</td>
-						</tr>
-						<tr>
-							<th scope="row"><label for="cat_exclude_browser_<?php echo esc_attr( $category_id ); ?>">Exclude
-									from toggles</label></th>
-							<td>
-								<input type="checkbox" name="cat_exclude_browser"
-									id="cat_exclude_browser_<?php echo esc_attr( $category_id ); ?>" value="1" <?php checked( $item['cat_exclude_browser'], 1 ); ?>>
-							</td>
-						</tr>
-					</table>
-					<p class="submit">
-						<input type="submit" name="update_category" id="update_category_<?php echo esc_attr( $category_id ); ?>"
-							class="button button-primary" value="Update Category">
-						<button type="button" class="button cancel-edit">Cancel</button>
-					</p>
-				</form>
-			</div>
-		</div>
-		<?php
-		return ob_get_clean();
 	}
 
 	private function display_category_options( $categories, $selected_id, $current_id, $depth = 0 ) {

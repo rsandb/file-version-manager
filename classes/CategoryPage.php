@@ -12,11 +12,11 @@ class CategoryPage {
 
 	public function init() {
 		add_action( 'admin_menu', [ $this, 'add_category_page' ] );
-		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_styles' ] );
+		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_scripts' ] );
 		add_action( 'load-files_page_fvm_categories', [ $this, 'setup_list_table' ] );
 		add_action( 'admin_post_add_category', [ $this, 'handle_add_category' ] );
-		add_action( 'admin_post_update_category', [ $this, 'handle_update_category' ] );
 		add_action( 'admin_post_delete_category', [ $this, 'handle_delete_category' ] );
+		add_action( 'load-files_page_fvm_categories', [ $this, 'handle_update_category' ] );
 		add_action( 'load-files_page_fvm_categories', [ $this, 'handle_bulk_actions' ] );
 	}
 
@@ -31,11 +31,12 @@ class CategoryPage {
 		);
 	}
 
-	public function enqueue_styles() {
+	public function enqueue_scripts() {
 		if ( function_exists( 'get_current_screen' ) ) {
 			$screen = get_current_screen();
 			if ( $screen && $screen->id === 'files_page_fvm_categories' ) {
 				wp_enqueue_style( 'file-version-manager-styles', plugin_dir_url( dirname( __FILE__ ) ) . 'css/categories.css' );
+				wp_enqueue_style( 'file-version-manager-admin-styles', plugin_dir_url( dirname( __FILE__ ) ) . 'css/admin.css' );
 			}
 		}
 	}
@@ -51,6 +52,7 @@ class CategoryPage {
 		ob_start();
 
 		$this->category_list_table->prepare_items();
+		$this->handle_update_category();
 
 		?>
 		<div class="wrap">
@@ -62,12 +64,6 @@ class CategoryPage {
 				echo "<div class='notice $status is-dismissible'><p>$message</p></div>";
 			}
 			?>
-
-			<div id="edit-form-container" style="display:none;">
-				<form id="edit-form" method="post" enctype="multipart/form-data">
-					<!-- The content of the edit form will be dynamically inserted here -->
-				</form>
-			</div>
 
 			<form class="search-form wp-clearfix" method="get">
 				<input type="hidden" name="page" value="fvm_categories" />
@@ -105,7 +101,7 @@ class CategoryPage {
 										<?php
 										$categories = $this->category_manager->get_categories_hierarchical();
 										if ( ! empty( $categories ) ) {
-											$this->display_category_options( $categories );
+											$this->category_manager->display_category_options( $categories );
 										}
 										?>
 									</select>
@@ -130,6 +126,77 @@ class CategoryPage {
 				<div id="col-right">
 					<div class="col-wrap">
 
+						<div id="edit-modal" class="edit-modal" style="display:none;">
+							<form id="edit-form" method="post" enctype="multipart/form-data">
+
+								<?php wp_nonce_field( 'edit_category', 'edit_category_nonce' ); ?>
+								<input type="hidden" name="category_id" id="edit-category-id" value="">
+
+								<div class="edit-modal-content-container">
+									<div class="edit-modal-content">
+										<span class="close">&times;</span>
+
+										<div class="fvm-edit-modal-title">
+											<h2>Edit Category</h2>
+											<h3 id="category_id"></h3>
+										</div>
+
+										<table class="form-table">
+											<tr>
+												<th scope="row"><label for="edit_cat_name">Category Name</label>
+												</th>
+												<td>
+													<input type="text" name="edit_cat_name" id="edit_cat_name" value=""
+														class="regular-text" required>
+												</td>
+											</tr>
+											<tr>
+												<th scope="row"><label for="edit_cat_slug">Category Slug</label>
+												</th>
+												<td>
+													<input type="text" name="edit_cat_slug" id="edit_cat_slug" value=""
+														class="regular-text" readonly disabled>
+												</td>
+											</tr>
+											<tr>
+												<th scope="row"><label for="cat_description">Description</label></th>
+												<td>
+													<textarea name="edit_cat_description" id="edit_cat_description"
+														class="large-text" rows="4"></textarea>
+												</td>
+											</tr>
+											<tr>
+												<th scope="row"><label for="cat_parent_id">Parent
+														Category</label></th>
+												<td>
+													<select name="edit_cat_parent_id" id="edit_cat_parent_id">
+														<option value="0">None</option>
+														<!-- Categories will be populated dynamically -->
+													</select>
+												</td>
+											</tr>
+										</table>
+									</div>
+									<div class="fvm-edit-modal-footer">
+										<div class="fvm-edit-modal-footer-inner">
+											<label class="switch">
+												<input type="checkbox" name="edit_cat_exclude_browser"
+													id="edit_cat_exclude_browser" value="1">
+												<span class="slider round"></span>
+											</label>
+											<span>Disabled</span>
+										</div>
+										<p class="submit">
+											<button type="button" class="button cancel-edit">Cancel</button>
+											<input type="submit" name="update_category" id="update_category"
+												class="button button-primary" value="Update Category">
+										</p>
+									</div>
+								</div>
+							</form>
+						</div>
+						<div id="edit-modal-overlay" class="edit-modal-overlay"></div>
+
 						<form method="post">
 							<?php
 							wp_nonce_field( 'bulk-categories' );
@@ -137,13 +204,6 @@ class CategoryPage {
 							$this->category_list_table->display();
 							?>
 						</form>
-
-						<?php
-						// Add modals for each category
-						foreach ( $this->category_list_table->items as $item ) {
-							echo $this->category_list_table->get_edit_form_html( $item['id'], $item );
-						}
-						?>
 
 					</div>
 				</div>
@@ -157,47 +217,104 @@ class CategoryPage {
 					link.addEventListener('click', function (e) {
 						e.preventDefault();
 						const categoryId = this.getAttribute('data-category-id');
-						const modal = document.getElementById('edit-modal-' + categoryId);
-						if (modal) {
-							modal.style.display = 'block';
-						} else {
-							console.error('Modal not found for category ID:', categoryId);
-						}
+						showEditModal(categoryId);
+						populateEditModal(categoryId);
 					});
 				});
 
-				// Close modal
+				function showEditModal(categoryId) {
+					const modal = document.getElementById('edit-modal');
+					const overlay = document.getElementById('edit-modal-overlay');
+					modal.style.display = 'flex';
+					overlay.style.display = 'block';
+
+					// Clear previous data and show loading indicators
+					document.getElementById('category_id').textContent = 'Loading...';
+					document.getElementById('edit_cat_name').value = 'Loading...';
+					document.getElementById('edit_cat_slug').value = 'Loading...';
+					document.getElementById('edit_cat_description').value = 'Loading...';
+					document.getElementById('edit_cat_parent_id').innerHTML = '<option value="0">Loading...</option>';
+					document.getElementById('edit_cat_exclude_browser').checked = false;
+				}
+
+				function populateEditModal(categoryId) {
+					fetch(`<?php echo admin_url( 'admin-ajax.php' ); ?>?action=get_category_data&category_id=${categoryId}&_ajax_nonce=<?php echo wp_create_nonce( 'get_category_data' ); ?>`)
+						.then(response => response.json())
+						.then(data => {
+							if (data.success) {
+								const category = data.data;
+								const sanitizedCategoryId = parseInt(category.id, 10);
+								if (isNaN(sanitizedCategoryId)) {
+									throw new Error('Invalid category ID');
+								}
+								document.getElementById('edit-category-id').value = sanitizedCategoryId;
+								document.getElementById('category_id').textContent = 'ID: ' + sanitizedCategoryId;
+								document.getElementById('edit_category_nonce').value = category.nonce;
+								document.getElementById('edit_cat_name').value = sanitizeHTML(category.cat_name);
+								document.getElementById('edit_cat_slug').value = sanitizeHTML(category.cat_slug);
+								document.getElementById('edit_cat_description').value = sanitizeHTML(category.cat_description || '');
+								document.getElementById('edit_cat_exclude_browser').checked = category.cat_exclude_browser == '1';
+
+								// Populate parent category dropdown
+								const parentSelect = document.getElementById('edit_cat_parent_id');
+								parentSelect.innerHTML = '<option value="0">None</option>';
+								if (category.parent_categories) {
+									function addOptions(categories, depth = 0) {
+										categories.forEach(cat => {
+											const option = document.createElement('option');
+											option.value = parseInt(cat.id, 10) || 0;
+											option.textContent = '\u00A0'.repeat(depth * 3) + sanitizeHTML(cat.cat_name);
+											option.selected = parseInt(cat.id, 10) === parseInt(category.cat_parent_id, 10);
+											parentSelect.appendChild(option);
+
+											if (cat.children && Array.isArray(cat.children) && cat.children.length > 0) {
+												addOptions(cat.children, depth + 1);
+											}
+										});
+									}
+									addOptions(category.parent_categories);
+								}
+							} else {
+								console.error('Failed to fetch category data:', data.message || 'Unknown error');
+							}
+						})
+						.catch(error => console.error('Error:', error.message));
+				}
+
+				// Add this helper function for basic HTML sanitization
+				function sanitizeHTML(str) {
+					const temp = document.createElement('div');
+					temp.textContent = str;
+					return temp.innerHTML;
+				}
+
+				function closeEditModal() {
+					const modal = document.getElementById('edit-modal');
+					const overlay = document.getElementById('edit-modal-overlay');
+					if (modal) {
+						modal.style.display = 'none';
+					}
+					if (overlay) {
+						overlay.style.display = 'none';
+					}
+				}
+
+				// Update event listeners for closing the modal
 				document.querySelectorAll('.close, .cancel-edit').forEach(button => {
 					button.addEventListener('click', function (e) {
 						e.preventDefault();
-						const modal = this.closest('.edit-modal');
-						if (modal) {
-							modal.style.display = 'none';
-						}
+						closeEditModal();
 					});
 				});
 
-				// Close modal when clicking outside
-				window.addEventListener('click', function (event) {
+				window.onclick = function (event) {
 					if (event.target.classList.contains('edit-modal')) {
-						event.target.style.display = 'none';
+						closeEditModal();
 					}
-				});
+				}
 			});
 		</script>
 		<?php
-	}
-
-	private function display_category_options( $categories, $depth = 0 ) {
-		foreach ( $categories as $category ) {
-			echo '<option value="' . esc_attr( $category->id ) . '">'
-				. str_repeat( '&nbsp;', $depth * 3 ) . esc_html( $category->cat_name )
-				. '</option>';
-
-			if ( ! empty( $category->children ) ) {
-				$this->display_category_options( $category->children, $depth + 1 );
-			}
-		}
 	}
 
 	public function handle_add_category() {
@@ -227,24 +344,25 @@ class CategoryPage {
 	}
 
 	public function handle_update_category() {
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( 'You do not have sufficient permissions to access this page.' );
-		}
+		if ( isset( $_POST['update_category'] ) && isset( $_POST['category_id'] ) ) {
+			$category_id = intval( $_POST['category_id'] );
 
-		check_admin_referer( 'edit_category_' . $_POST['category_id'], 'edit_category_nonce' );
+			if ( ! isset( $_POST['edit_category_nonce'] ) || ! wp_verify_nonce( $_POST['edit_category_nonce'], 'edit_category_' . $category_id ) ) {
+				wp_die( 'Security check failed.', 'Invalid Nonce', array( 'response' => 403 ) );
+			}
 
-		$category_id = intval( $_POST['category_id'] );
-		$cat_name = sanitize_text_field( $_POST['cat_name'] );
-		$cat_description = sanitize_textarea_field( $_POST['cat_description'] );
-		$cat_parent_id = intval( $_POST['cat_parent_id'] );
-		$cat_exclude_browser = isset( $_POST['cat_exclude_browser'] ) ? 1 : 0;
+			$cat_name = sanitize_text_field( $_POST['edit_cat_name'] );
+			$cat_description = sanitize_textarea_field( $_POST['edit_cat_description'] );
+			$cat_parent_id = intval( $_POST['edit_cat_parent_id'] );
+			$cat_exclude_browser = isset( $_POST['edit_cat_exclude_browser'] ) ? 1 : 0;
 
-		$update_result = $this->category_manager->update_category( $category_id, $cat_name, $cat_description, $cat_parent_id, $cat_exclude_browser );
+			$update_result = $this->category_manager->update_category( $category_id, $cat_name, $cat_description, $cat_parent_id, $cat_exclude_browser );
 
-		if ( $update_result === false ) {
-			fvm_redirect_with_message( 'fvm_categories', 'error', 'Failed to update category.' );
-		} else {
-			fvm_redirect_with_message( 'fvm_categories', 'success', 'Category updated successfully.' );
+			if ( $update_result ) {
+				fvm_redirect_with_message( 'fvm_categories', 'success', 'Category updated successfully.' );
+			} else {
+				fvm_redirect_with_message( 'fvm_categories', 'error', 'Failed to update category.' );
+			}
 		}
 	}
 
