@@ -422,6 +422,7 @@ class FilePage {
 
 						// Clear previous data and show loading indicators
 						document.getElementById('file_id').textContent = 'Loading...';
+						document.getElementById('new_file').value = '';
 						document.getElementById('file_name').value = 'Loading...';
 						document.getElementById('file_display_name').value = 'Loading...';
 						document.getElementById('file_description').value = 'Loading...';
@@ -477,24 +478,55 @@ class FilePage {
 							.catch(error => console.error('Error:', error));
 					}
 
+					function closeEditModal() {
+						const modal = document.getElementById('edit-modal');
+						const overlay = document.getElementById('edit-modal-overlay');
+						if (modal) {
+							modal.style.display = 'none';
+						}
+						if (overlay) {
+							overlay.style.display = 'none';
+						}
+
+						// Reset the file input and related elements
+						const fileInput = document.getElementById('new_file');
+						const fileNameDisplay = document.getElementById('fvm-edit-file-name');
+						const fileNameContainer = document.querySelector('#edit-form .fvm-file-name-container');
+						const selectFileBtn = document.getElementById('fvm-edit-select-file');
+						const uploadInstructions = document.querySelectorAll('#edit-form .fvm-upload-instructions');
+						const postUploadInfo = document.querySelector('#edit-form .post-upload-ui');
+
+						if (fileInput) {
+							fileInput.value = '';
+						}
+						if (fileNameContainer) {
+							fileNameContainer.style.display = 'none';
+						}
+						if (selectFileBtn) {
+							selectFileBtn.style.display = 'inline-block';
+						}
+						if (uploadInstructions) {
+							uploadInstructions.forEach(el => el.style.display = 'block');
+						}
+						if (postUploadInfo) {
+							postUploadInfo.style.display = 'block';
+						}
+						if (fileNameDisplay) {
+							fileNameDisplay.textContent = '';
+						}
+					}
+
+					// Update event listeners for closing the modal
 					document.querySelectorAll('.close, .cancel-edit').forEach(button => {
 						button.addEventListener('click', function (e) {
 							e.preventDefault();
-							const modal = this.closest('.edit-modal');
-							const overlay = document.getElementById('edit-modal-overlay');
-							if (modal) {
-								modal.style.display = 'none';
-							}
-							if (overlay) {
-								overlay.style.display = 'none';
-							}
+							closeEditModal();
 						});
 					});
 
 					window.onclick = function (event) {
 						if (event.target.classList.contains('edit-modal')) {
-							event.target.style.display = 'none';
-							document.getElementById('edit-modal-overlay').style.display = 'none';
+							closeEditModal();
 						}
 					}
 				});
