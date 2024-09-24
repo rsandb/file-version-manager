@@ -22,6 +22,7 @@ define( 'FVM\FileVersionManager\PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
 require_once __DIR__ . '/includes/Constants.php';
 require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/includes/ajax-handler.php';
 require_once __DIR__ . '/classes/Plugin.php';
 require_once __DIR__ . '/classes/FileManager.php';
 require_once __DIR__ . '/classes/FilePage.php';

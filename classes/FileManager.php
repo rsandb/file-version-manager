@@ -404,4 +404,40 @@ class FileManager {
 		}
 		return false;
 	}
+
+	/**
+	 * Get file data
+	 * 
+	 * @param int $file_id
+	 * @return array|false
+	 */
+	public function get_file_data( $file_id ) {
+		$file = $this->get_file( $file_id );
+		if ( ! $file ) {
+			return false;
+		}
+
+		// Get categories for the file
+		$categories = $this->wpdb->get_results( $this->wpdb->prepare(
+			"SELECT c.id, c.cat_name, IF(r.file_id IS NOT NULL, 1, 0) as checked
+			 FROM {$this->cat_table_name} c
+			 LEFT JOIN {$this->rel_table_name} r ON c.id = r.category_id AND r.file_id = %d
+			 ORDER BY c.cat_name ASC",
+			$file_id
+		) );
+
+		$file_data = (array) $file;
+		$file_data['categories'] = array_map( function ($category) {
+			return [ 
+				'id' => $category->id,
+				'name' => $category->cat_name,
+				'checked' => $category->checked == 1
+			];
+		}, $categories );
+
+		// Add nonce to the file data
+		$file_data['nonce'] = wp_create_nonce( 'edit_file_' . $file_id );
+
+		return $file_data;
+	}
 }

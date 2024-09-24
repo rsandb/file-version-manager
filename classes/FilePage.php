@@ -95,7 +95,10 @@ class FilePage {
 						<div class="upload-ui">
 							<h2 class="fvm-upload-instructions">Drop files to upload</h2>
 							<p class="fvm-upload-instructions">or</p>
-							<p id="fvm-file-name" style="display: none;"></p>
+							<div class="fvm-file-name-container" style="display: none;">
+								<p id="fvm-file-name"></p>
+								<span class="fvm-clear-file dashicons dashicons-no-alt"></span>
+							</div>
 							<input type="file" name="file" id="fvm-file-input" style="display: none;" required>
 							<button type="button" id="fvm-select-file" class="browser button button-hero">Select File</button>
 							<input type="submit" name="fvm_upload_file" id="fvm-upload-button" value="Upload File"
@@ -119,11 +122,140 @@ class FilePage {
 				</form>
 			</div>
 
-			<div id="edit-form-container" style="display:none;">
+			<div id="edit-modal" class="edit-modal" style="display:none;">
 				<form id="edit-form" method="post" enctype="multipart/form-data">
-					<!-- The content of the edit form will be dynamically inserted here -->
+					<?php wp_nonce_field( 'edit_file', 'edit_file_nonce' ); ?>
+					<input type="hidden" name="file_id" id="edit-file-id" value="">
+					<div class="edit-modal-content-container">
+						<div class="edit-modal-content">
+							<span class="close">&times;</span>
+
+							<div class="fvm-edit-modal-title">
+								<h2>Edit File</h2>
+								<h3 id="file_id"></h3>
+							</div>
+
+							<div id="fvm-dropzone-edit" class="fvm-dropzone">
+								<div class="upload-ui">
+									<h2 class="fvm-upload-instructions">Drop files to upload</h2>
+									<p class="fvm-upload-instructions">or</p>
+									<div class="fvm-file-name-container" style="display: none;">
+										<p id="fvm-edit-file-name"></p>
+										<span class="fvm-clear-file dashicons dashicons-no-alt"></span>
+									</div>
+									<input type="file" name="new_file" id="new_file" style="display: none;">
+									<button type="button" id="fvm-edit-select-file" class="browser button button-hero">Select
+										File</button>
+								</div>
+								<div class="post-upload-ui" id="post-upload-info">
+									<p class="fvm-upload-instructions">
+										Maximum upload file size: <?php echo size_format( wp_max_upload_size() ); ?>.
+
+										<?php
+										// Check if Big File Uploads plugin is active
+										if ( class_exists( 'BigFileUploads' ) ) {
+											$bfu_settings_url = admin_url( 'options-general.php?page=big_file_uploads' );
+											echo ' <small><a href="' . esc_url( $bfu_settings_url ) . '" style="text-decoration:none;">' . esc_html__( 'Change', 'file-version-manager' ) . '</a></small>';
+										}
+										?>
+									</p>
+								</div>
+							</div>
+
+							<table class="form-table">
+								<tr>
+									<th scope="row"><label for="file_name">File Name</label></th>
+									<td>
+										<input type="text" id="file_name" name="file_name" value="" class="regular-text"
+											readonly disabled>
+									</td>
+								</tr>
+								<tr>
+									<th scope="row"><label for="file_display_name">Display Name</label></th>
+									<td>
+										<input type="text" name="file_display_name" id="file_display_name" value=""
+											class="regular-text">
+									</td>
+								</tr>
+								<tr>
+									<th scope="row"><label for="file_description">Description</label></th>
+									<td>
+										<textarea name="file_description" id="file_description" class="regular-text"
+											rows="3"></textarea>
+									</td>
+								</tr>
+								<tr>
+									<th scope="row"><label for="file_categories">Categories</label></th>
+									<td>
+										<div class="fvm-file-categories-container">
+											<div class="fvm-file-categories-container-inner" id="file_categories">
+												<!-- Categories will be populated dynamically -->
+											</div>
+										</div>
+									</td>
+								</tr>
+								<?php if ( ! get_option( 'fvm_auto_increment_version', 1 ) ) : ?>
+									<tr>
+										<th scope="row"><label for="file_version">Version</label></th>
+										<td>
+											<input type="number" step="0.1" min="0" name="file_version" id="file_version" value=""
+												class="regular-text">
+										</td>
+									</tr>
+								<?php endif; ?>
+								<tr>
+									<th scope="row"><label for="file_url">File URL</label></th>
+									<td>
+										<input type="text" id="file_url" name="file_url" value="" class="regular-text" readonly
+											disabled>
+									</td>
+								</tr>
+								<tr>
+									<th scope="row"><label for="md5_hash">MD5 Hash</label></th>
+									<td>
+										<input type="text" id="md5_hash" name="md5_hash" value="" class="regular-text" readonly
+											disabled>
+									</td>
+								</tr>
+								<tr>
+									<th scope="row"><label for="sha256_hash">SHA256 Hash</label></th>
+									<td>
+										<input type="text" id="sha256_hash" name="sha256_hash" value="" class="regular-text"
+											readonly disabled>
+									</td>
+								</tr>
+								<!-- <tr>
+									<th scope="row"><label for="new_file">Replace File</label></th>
+									<td>
+										<input type="file" name="new_file" id="new_file">
+									</td>
+								</tr> -->
+								<!-- <tr>
+									<th scope="row"><label for="file_offline">File Offline</label></th>
+									<td>
+										<input type="checkbox" name="file_offline" id="file_offline" value="1">
+									</td>
+								</tr> -->
+							</table>
+						</div>
+						<div class="fvm-edit-modal-footer">
+							<div class="fvm-edit-modal-footer-inner">
+								<label class="switch">
+									<input type="checkbox" name="file_offline" id="file_offline" value="1">
+									<span class="slider round"></span>
+								</label>
+								<span>Disabled</span>
+							</div>
+							<p class="submit">
+								<button type="button" class="button cancel-edit">Cancel</button>
+								<input type="submit" name="update_file" id="update_file" class="button button-primary"
+									value="Update File">
+							</p>
+						</div>
+					</div>
 				</form>
 			</div>
+			<div id="edit-modal-overlay" class="edit-modal-overlay"></div>
 
 			<form method="get">
 				<input type="hidden" name="page" value="fvm_files" />
@@ -149,96 +281,97 @@ class FilePage {
 
 			<script type="text/javascript">
 				document.addEventListener('DOMContentLoaded', function () {
-					const dropzone = document.querySelector('.fvm-dropzone');
-					const fileInput = document.getElementById('fvm-file-input');
-					const selectFileBtn = document.getElementById('fvm-select-file');
-					const uploadForm = document.getElementById('fvm-upload-form');
-					const uploadButton = document.getElementById('fvm-upload-button');
-					const fileNameDisplay = document.getElementById('fvm-file-name');
-					const uploadInstructions = document.querySelectorAll('.fvm-upload-instructions');
-					const postUploadInfo = document.getElementById('post-upload-info');
+					const setupDropzone = (formId, fileInputId, selectFileBtnId, uploadButtonId, fileNameDisplayId) => {
+						const form = document.getElementById(formId);
+						const dropzone = form.querySelector('.fvm-dropzone');
+						const fileInput = form.querySelector('#' + fileInputId);
+						const selectFileBtn = form.querySelector('#' + selectFileBtnId);
+						const uploadButton = uploadButtonId ? form.querySelector('#' + uploadButtonId) : null;
+						const fileNameDisplay = form.querySelector('#' + fileNameDisplayId);
+						const uploadInstructions = form.querySelectorAll('.fvm-upload-instructions');
+						const postUploadInfo = form.querySelector('.post-upload-ui');
+						const fileNameContainer = form.querySelector('.fvm-file-name-container');
+						const clearFileBtn = form.querySelector('.fvm-clear-file');
 
-					// Drag and drop functionality
-					['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-						dropzone.addEventListener(eventName, preventDefaults, false);
-					});
+						// Drag and drop functionality
+						['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+							dropzone.addEventListener(eventName, preventDefaults, false);
+						});
 
-					function preventDefaults(e) {
-						e.preventDefault();
-						e.stopPropagation();
-					}
-
-					['dragenter', 'dragover'].forEach(eventName => {
-						dropzone.addEventListener(eventName, highlight, false);
-					});
-
-					['dragleave', 'drop'].forEach(eventName => {
-						dropzone.addEventListener(eventName, unhighlight, false);
-					});
-
-					function highlight() {
-						dropzone.classList.add('highlight');
-					}
-
-					function unhighlight() {
-						dropzone.classList.remove('highlight');
-					}
-
-					dropzone.addEventListener('drop', handleDrop, false);
-
-					function handleDrop(e) {
-						const dt = e.dataTransfer;
-						const files = dt.files;
-						handleFiles(files);
-
-						// Set the file input value
-						if (files.length > 0) {
-							const dT = new DataTransfer();
-							dT.items.add(files[0]);
-							fileInput.files = dT.files;
+						function preventDefaults(e) {
+							e.preventDefault();
+							e.stopPropagation();
 						}
-					}
 
-					// Select file button functionality
-					selectFileBtn.addEventListener('click', () => {
-						fileInput.click();
-					});
+						['dragenter', 'dragover'].forEach(eventName => {
+							dropzone.addEventListener(eventName, () => dropzone.classList.add('highlight'), false);
+						});
 
-					fileInput.addEventListener('change', () => {
-						handleFiles(fileInput.files);
-					});
+						['dragleave', 'drop'].forEach(eventName => {
+							dropzone.addEventListener(eventName, () => dropzone.classList.remove('highlight'), false);
+						});
 
-					function handleFiles(files) {
-						if (files.length > 0) {
-							const fileName = files[0].name;
-							fileNameDisplay.textContent = fileName;
-							fileNameDisplay.style.display = 'block';
-							selectFileBtn.style.display = 'none';
-							if (uploadButton) {
-								uploadButton.style.display = 'inline-block';
-							}
-							// Hide upload instructions and post-upload info
-							uploadInstructions.forEach(el => el.style.display = 'none');
-							if (postUploadInfo) {
-								postUploadInfo.style.display = 'none';
-							}
+						dropzone.addEventListener('drop', handleDrop, false);
 
-							// Set the file input value
-							const dT = new DataTransfer();
-							dT.items.add(files[0]);
-							fileInput.files = dT.files;
+						function handleDrop(e) {
+							const dt = e.dataTransfer;
+							const files = dt.files;
+							handleFiles(files);
 						}
-					}
 
-					// // Add form submission handler
-					// uploadForm.addEventListener('submit', function (e) {
-					// 	e.preventDefault();
-					// 	if (fileInput.files.length > 0) {
-					// 		this.submit();
-					// 	} else {
-					// 		alert('Please select a file to upload.');
-					// 	}
-					// });
+						// Select file button functionality
+						selectFileBtn.addEventListener('click', () => {
+							fileInput.click();
+						});
+
+						fileInput.addEventListener('change', () => {
+							handleFiles(fileInput.files);
+						});
+
+						function handleFiles(files) {
+							if (files.length > 0) {
+								const fileName = files[0].name;
+								fileNameDisplay.textContent = fileName;
+								fileNameContainer.style.display = 'flex';
+								selectFileBtn.style.display = 'none';
+								if (uploadButton) {
+									uploadButton.style.display = 'inline-block';
+								}
+								// Hide upload instructions and post-upload info
+								uploadInstructions.forEach(el => el.style.display = 'none');
+								if (postUploadInfo) {
+									postUploadInfo.style.display = 'none';
+								}
+
+								// Set the file input value
+								const dT = new DataTransfer();
+								dT.items.add(files[0]);
+								fileInput.files = dT.files;
+							}
+						}
+
+						if (clearFileBtn) {
+							clearFileBtn.addEventListener('click', () => {
+								fileInput.value = '';
+								fileNameContainer.style.display = 'none';
+								selectFileBtn.style.display = 'inline-block';
+								if (uploadButton) {
+									uploadButton.style.display = 'none';
+								}
+								// Show upload instructions and post-upload info
+								uploadInstructions.forEach(el => el.style.display = 'block');
+								if (postUploadInfo) {
+									postUploadInfo.style.display = 'block';
+								}
+							});
+						}
+					};
+
+					// Setup main upload form
+					setupDropzone('fvm-upload-form', 'fvm-file-input', 'fvm-select-file', 'fvm-upload-button', 'fvm-file-name');
+
+					// Setup edit modal dropzone
+					setupDropzone('edit-form', 'new_file', 'fvm-edit-select-file', null, 'fvm-edit-file-name');
 				});
 			</script>
 
@@ -276,21 +409,84 @@ class FilePage {
 						link.addEventListener('click', function (e) {
 							e.preventDefault();
 							const fileId = this.getAttribute('data-file-id');
-							const modal = document.getElementById('edit-modal-' + fileId);
-							if (modal) {
-								modal.style.display = 'block';
-							} else {
-								console.error('Modal not found for file ID:', fileId);
-							}
+							showEditModal(fileId);
+							populateEditModal(fileId);
 						});
 					});
+
+					function showEditModal(fileId) {
+						const modal = document.getElementById('edit-modal');
+						const overlay = document.getElementById('edit-modal-overlay');
+						modal.style.display = 'flex';
+						overlay.style.display = 'block';
+
+						// Clear previous data and show loading indicators
+						document.getElementById('file_id').textContent = 'Loading...';
+						document.getElementById('file_name').value = 'Loading...';
+						document.getElementById('file_display_name').value = 'Loading...';
+						document.getElementById('file_description').value = 'Loading...';
+						document.getElementById('file_url').value = 'Loading...';
+						document.getElementById('md5_hash').value = 'Loading...';
+						document.getElementById('sha256_hash').value = 'Loading...';
+						document.getElementById('file_categories').innerHTML = 'Loading...';
+						if (document.getElementById('file_version')) {
+							document.getElementById('file_version').value = '';
+						}
+						document.getElementById('file_offline').checked = false;
+					}
+
+					// Function to populate the edit modal
+					function populateEditModal(fileId) {
+						fetch(`<?php echo admin_url( 'admin-ajax.php' ); ?>?action=get_file_data&file_id=${fileId}&_ajax_nonce=<?php echo wp_create_nonce( 'get_file_data' ); ?>`)
+							.then(response => response.json())
+							.then(data => {
+								if (data.success) {
+									const file = data.data;
+									document.getElementById('edit-file-id').value = file.id;
+									document.getElementById('file_id').textContent = 'ID: ' + file.id;
+									document.getElementById('edit_file_nonce').value = file.nonce;
+									document.getElementById('file_name').value = file.file_name;
+									document.getElementById('file_display_name').value = file.file_display_name || '';
+									document.getElementById('file_description').value = file.file_description || '';
+									document.getElementById('file_url').value = file.file_url;
+									document.getElementById('md5_hash').value = file.file_hash_md5 || '';
+									document.getElementById('sha256_hash').value = file.file_hash_sha256 || '';
+									if (document.getElementById('file_version')) {
+										document.getElementById('file_version').value = file.file_version;
+									}
+									document.getElementById('file_offline').checked = file.file_offline == '1';
+
+									// Populate categories
+									const categoriesContainer = document.getElementById('file_categories');
+									categoriesContainer.innerHTML = '';
+									file.categories.forEach(category => {
+										const label = document.createElement('label');
+										const checkbox = document.createElement('input');
+										checkbox.type = 'checkbox';
+										checkbox.name = 'file_categories[]';
+										checkbox.value = category.id;
+										checkbox.checked = category.checked;
+										label.appendChild(checkbox);
+										label.appendChild(document.createTextNode(` ${category.name}`));
+										categoriesContainer.appendChild(label);
+									});
+								} else {
+									console.error('Failed to fetch file data');
+								}
+							})
+							.catch(error => console.error('Error:', error));
+					}
 
 					document.querySelectorAll('.close, .cancel-edit').forEach(button => {
 						button.addEventListener('click', function (e) {
 							e.preventDefault();
 							const modal = this.closest('.edit-modal');
+							const overlay = document.getElementById('edit-modal-overlay');
 							if (modal) {
 								modal.style.display = 'none';
+							}
+							if (overlay) {
+								overlay.style.display = 'none';
 							}
 						});
 					});
@@ -298,10 +494,9 @@ class FilePage {
 					window.onclick = function (event) {
 						if (event.target.classList.contains('edit-modal')) {
 							event.target.style.display = 'none';
+							document.getElementById('edit-modal-overlay').style.display = 'none';
 						}
 					}
-
-
 				});
 			</script>
 		</div>
@@ -400,10 +595,11 @@ class FilePage {
 	 */
 	public function handle_file_update() {
 		if ( isset( $_POST['update_file'] ) && isset( $_POST['file_id'] ) ) {
-			check_admin_referer( 'edit_file_' . $_POST['file_id'], 'edit_file_nonce' );
+			$file_id = intval( $_POST['file_id'] );
+			check_admin_referer( 'edit_file_' . $file_id, 'edit_file_nonce' );
 
 			$file_id = intval( $_POST['file_id'] );
-			$new_file = isset( $_FILES['new_file'] ) ? $_FILES['new_file'] : null;
+			$new_file = isset( $_FILES['new_file'] ) && ! empty( $_FILES['new_file']['tmp_name'] ) ? $_FILES['new_file'] : null;
 			$file_version = isset( $_POST['file_version'] ) ? sanitize_text_field( $_POST['file_version'] ) : '';
 			$file_display_name = isset( $_POST['file_display_name'] ) ? sanitize_text_field( $_POST['file_display_name'] ) : '';
 			$file_description = isset( $_POST['file_description'] ) ? sanitize_textarea_field( $_POST['file_description'] ) : '';
@@ -412,16 +608,24 @@ class FilePage {
 
 			// If auto-increment is enabled and a new file is uploaded, pass an empty version
 			$auto_increment_version = get_option( 'fvm_auto_increment_version', 1 );
-			if ( $auto_increment_version && $new_file && ! empty( $new_file['tmp_name'] ) ) {
+			if ( $auto_increment_version && $new_file ) {
 				$file_version = '';
 			}
 
 			$update_result = $this->file_manager->update_file( $file_id, $new_file, $file_version, $file_display_name, $file_description, $file_categories, $file_offline );
 
 			if ( $update_result ) {
-				fvm_redirect_with_message( 'fvm_files', 'success', 'File updated successfully.' );
+				$message = 'File updated successfully.';
+				if ( $new_file ) {
+					$message .= ' New file uploaded.';
+				}
+				fvm_redirect_with_message( 'fvm_files', 'success', $message );
 			} else {
-				fvm_redirect_with_message( 'fvm_files', 'error', 'Error updating file.' );
+				$error_message = 'Error updating file.';
+				if ( $new_file ) {
+					$error_message .= ' File upload failed.';
+				}
+				fvm_redirect_with_message( 'fvm_files', 'error', $error_message );
 			}
 		}
 	}
