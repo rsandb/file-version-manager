@@ -28,6 +28,9 @@ Reach out to me at riley@sandb.org
 
 == Changelog ==
 
+= 0.11.3 =
+* Update the edit modal UI for categories. It now uses a single template and fetches the file data via AJAX.
+
 = 0.11.2 =
 * Update the edit modal UI. It now uses a single template and fetches the file data via AJAX.
 
