@@ -41,6 +41,7 @@ class SettingsPage {
 		// register_setting( 'fvm_settings', 'fvm_custom_directory' );
 		register_setting( 'fvm_settings', 'fvm_debug_logs' );
 		register_setting( 'fvm_settings', 'fvm_auto_increment_version' );
+		register_setting( 'fvm_settings', 'fvm_nginx_rewrite_rules' );
 	}
 
 	public function set_default_options() {
@@ -49,6 +50,9 @@ class SettingsPage {
 		}
 		if ( get_option( 'fvm_auto_increment_version' ) === false ) {
 			update_option( 'fvm_auto_increment_version', 0 );
+		}
+		if ( get_option( 'fvm_nginx_rewrite_rules' ) === false ) {
+			update_option( 'fvm_nginx_rewrite_rules', 0 );
 		}
 	}
 
@@ -174,6 +178,33 @@ class SettingsPage {
 						</div>
 						<small class="description">Enable debug logs for migration and other methods in the plugin's
 							settings.</small>
+					</div>
+				</div>
+			</div>
+
+			<div id="nginx" class="fvm_settings-section">
+				<h2>Nginx Settings</h2>
+				<div class="fvm_settings-section-content">
+					<div>
+						<p>Add the following Nginx Rewrite Rules to your server configuration:</p>
+						<div>
+							<h3>Source</h3>
+							<code id="source">rewrite ^/download/([^/]+)/?$</code>
+							<button onclick="copyToClipboard(document.getElementById('source'))">Copy</button>
+						</div>
+						<div>
+							<h3>Destination</h3>
+							<code id="destination">/index.php?fvm_download=1&fvm_file=$1</code>
+							<button onclick="copyToClipboard(document.getElementById('destination'))">Copy</button>
+						</div>
+
+					</div>
+					<div class="fvm_field-group">
+						<div class="fvm_input-group">
+							<input type="checkbox" name="fvm_nginx_rewrite_rules" value="1" <?php checked( get_option( 'fvm_nginx_rewrite_rules' ), 1 ); ?> />
+							<span>I've added the Nginx Rewrite Rules to my server.</span>
+						</div>
+						<small>Check this after adding the rules. This will remove the notice.</small>
 					</div>
 				</div>
 			</div>

@@ -31,6 +31,8 @@ class Plugin {
 		add_action( 'plugins_loaded', [ $this, 'setup' ] );
 		add_action( 'init', [ $this, 'add_rewrite_rules' ] );
 		add_action( 'init', [ $this, 'maybe_flush_rewrite_rules' ] );
+		add_action( 'admin_init', [ $this, 'add_nginx_rewrite_rules' ] );
+		add_action( 'admin_notices', [ $this, 'display_server_notice' ] );
 	}
 
 	public function setup() {
@@ -44,6 +46,21 @@ class Plugin {
 		add_filter( 'admin_footer_text', [ $this, 'custom_admin_footer_text' ], 9999 );
 	}
 
+	public function display_server_notice() {
+		if ( $this->is_nginx() && ! get_option( 'fvm_nginx_rewrite_rules' ) ) {
+			$class = 'notice notice-error is-dismissible';
+			$message = __( 'Your website is running on an Nginx server. Additional setup is required for File Version Manager to work correctly. Please check the <a href="' . admin_url( 'admin.php?page=fvm_settings#nginx' ) . '">plugin settings</a> for Nginx configuration instructions.', 'file-version-manager' );
+			printf( '<div class="%1$s"><p>%2$s</p></div>', esc_attr( $class ), wp_kses_post( $message ) );
+		}
+	}
+
+	private function is_nginx() {
+		if ( isset( $_SERVER['SERVER_SOFTWARE'] ) ) {
+			return stripos( $_SERVER['SERVER_SOFTWARE'], 'nginx' ) !== false;
+		}
+		return false;
+	}
+
 	public function add_rewrite_rules() {
 		add_rewrite_rule(
 			'download/([^/]+)/?$',
@@ -52,6 +69,18 @@ class Plugin {
 		);
 		add_rewrite_tag( '%fvm_download%', '([0-1]+)' );
 		add_rewrite_tag( '%fvm_file%', '([^&]+)' );
+	}
+
+	public function add_nginx_rewrite_rules() {
+		$nginx_rules = "
+location / {
+    try_files \$uri \$uri/ /index.php?\$args;
+}
+
+rewrite ^/download/([^/]+)/?$ /index.php?fvm_download=1&fvm_file=\$1 last;
+";
+
+		update_option( 'fvm_nginx_rules', $nginx_rules );
 	}
 
 	public function maybe_flush_rewrite_rules() {
