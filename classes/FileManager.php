@@ -195,6 +195,30 @@ class FileManager {
 	}
 
 	/**
+	 * Upload multiple files
+	 * 
+	 * @param array $files
+	 * @return array
+	 */
+	public function upload_files( $files ) {
+		$uploaded_files = [];
+		foreach ( $files['name'] as $key => $value ) {
+			$file = [ 
+				'name' => $files['name'][ $key ],
+				'type' => $files['type'][ $key ],
+				'tmp_name' => $files['tmp_name'][ $key ],
+				'error' => $files['error'][ $key ],
+				'size' => $files['size'][ $key ],
+			];
+			$upload_result = $this->upload_file( $file );
+			if ( $upload_result ) {
+				$uploaded_files[] = $upload_result;
+			}
+		}
+		return $uploaded_files;
+	}
+
+	/**
 	 * Update a file
 	 * 
 	 * @param int $file_id

@@ -99,9 +99,9 @@ class FilePage {
 								<p id="fvm-file-name"></p>
 								<span class="fvm-clear-file dashicons dashicons-no-alt"></span>
 							</div>
-							<input type="file" name="file" id="fvm-file-input" style="display: none;" required>
-							<button type="button" id="fvm-select-file" class="browser button button-hero">Select File</button>
-							<input type="submit" name="fvm_upload_file" id="fvm-upload-button" value="Upload File"
+							<input type="file" name="file[]" id="fvm-file-input" style="display: none;" multiple required>
+							<button type="button" id="fvm-select-file" class="browser button button-hero">Select Files</button>
+							<input type="submit" name="fvm_upload_file" id="fvm-upload-button" value="Upload Files"
 								class="button button-primary button-hero" style="display: none;">
 						</div>
 						<div class="post-upload-ui" id="post-upload-info">
@@ -313,23 +313,19 @@ class FilePage {
 
 						function handleFiles(files) {
 							if (files.length > 0) {
-								const fileName = files[0].name;
-								fileNameDisplay.textContent = fileName;
+								const fileNames = Array.from(files).map(file => file.name).join(', ');
+								fileNameDisplay.textContent = files.length > 1 ? `${files.length} files selected` : fileNames;
 								fileNameContainer.style.display = 'flex';
 								selectFileBtn.style.display = 'none';
 								if (uploadButton) {
 									uploadButton.style.display = 'inline-block';
+									uploadButton.value = files.length > 1 ? 'Upload Files' : 'Upload File';
 								}
 								// Hide upload instructions and post-upload info
 								uploadInstructions.forEach(el => el.style.display = 'none');
 								if (postUploadInfo) {
 									postUploadInfo.style.display = 'none';
 								}
-
-								// Set the file input value
-								const dT = new DataTransfer();
-								dT.items.add(files[0]);
-								fileInput.files = dT.files;
 							}
 						}
 
@@ -559,12 +555,14 @@ class FilePage {
 		if ( isset( $_POST['fvm_upload_file'] ) && isset( $_FILES['file'] ) ) {
 			check_admin_referer( 'fvm_file_upload', 'fvm_file_upload_nonce' );
 
-			$upload_result = $this->file_manager->upload_file( $_FILES['file'] );
+			$upload_results = $this->file_manager->upload_files( $_FILES['file'] );
 
-			if ( $upload_result ) {
-				fvm_redirect_with_message( 'fvm_files', 'success', 'File uploaded successfully.' );
+			if ( ! empty( $upload_results ) ) {
+				$count = count( $upload_results );
+				$message = sprintf( _n( '%s file uploaded successfully.', '%s files uploaded successfully.', $count, 'file-version-manager' ), number_format_i18n( $count ) );
+				fvm_redirect_with_message( 'fvm_files', 'success', $message );
 			} else {
-				fvm_redirect_with_message( 'fvm_files', 'error', 'Error uploading file.' );
+				fvm_redirect_with_message( 'fvm_files', 'error', 'Error uploading files.' );
 			}
 		}
 	}

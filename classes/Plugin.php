@@ -48,7 +48,7 @@ class Plugin {
 
 	public function display_server_notice() {
 		if ( $this->is_nginx() && ! get_option( 'fvm_nginx_rewrite_rules' ) ) {
-			$class = 'notice notice-error is-dismissible';
+			$class = 'notice notice-error';
 			$message = __( 'Your website is running on an Nginx server. Additional setup is required for File Version Manager to work correctly. Please check the <a href="' . admin_url( 'admin.php?page=fvm_settings#nginx' ) . '">plugin settings</a> for Nginx configuration instructions.', 'file-version-manager' );
 			printf( '<div class="%1$s"><p>%2$s</p></div>', esc_attr( $class ), wp_kses_post( $message ) );
 		}
