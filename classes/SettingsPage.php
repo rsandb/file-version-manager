@@ -182,32 +182,35 @@ class SettingsPage {
 				</div>
 			</div>
 
-			<div id="nginx" class="fvm_settings-section">
-				<h2>Nginx Settings</h2>
-				<div class="fvm_settings-section-content">
-					<div>
-						<p>Add the following Nginx Rewrite Rules to your server configuration:</p>
+			<?php if ( is_nginx() ) : ?>
+				<div id="nginx" class="fvm_settings-section">
+					<h2>Nginx Settings</h2>
+					<div class="fvm_settings-section-content">
 						<div>
-							<h3>Source</h3>
-							<code id="source">rewrite ^/download/([^/]+)/?$</code>
-							<button onclick="copyToClipboard(document.getElementById('source'))">Copy</button>
-						</div>
-						<div>
-							<h3>Destination</h3>
-							<code id="destination">/index.php?fvm_download=1&fvm_file=$1</code>
-							<button onclick="copyToClipboard(document.getElementById('destination'))">Copy</button>
-						</div>
+							<p>Add the following Nginx Rewrite Rules to your server configuration:</p>
+							<div>
+								<h3>Source</h3>
+								<code id="source">^/download/([^/]+)/?$</code>
+								<button onclick="copyToClipboard(document.getElementById('source'))">Copy</button>
+							</div>
+							<div>
+								<h3>Destination</h3>
+								<code id="destination">/index.php?fvm_download=1&fvm_file=$1</code>
+								<button onclick="copyToClipboard(document.getElementById('destination'))">Copy</button>
+							</div>
 
-					</div>
-					<div class="fvm_field-group">
-						<div class="fvm_input-group">
-							<input type="checkbox" name="fvm_nginx_rewrite_rules" value="1" <?php checked( get_option( 'fvm_nginx_rewrite_rules' ), 1 ); ?> />
-							<span>I've added the Nginx Rewrite Rules to my server.</span>
 						</div>
-						<small>Check this after adding the rules. This will remove the notice.</small>
+						<div class="fvm_field-group">
+							<div class="fvm_input-group">
+								<input type="checkbox" name="fvm_nginx_rewrite_rules" value="1" <?php checked( get_option( 'fvm_nginx_rewrite_rules' ), 1 ); ?> />
+								<span>I've added the Nginx Rewrite Rules to my server.</span>
+							</div>
+							<small>Check this after adding the rules. This will remove the notice.</small>
+						</div>
 					</div>
 				</div>
-			</div>
+			<?php endif; ?>
+
 			<?php submit_button(); ?>
 		</form>
 		<?php
