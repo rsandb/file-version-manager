@@ -4,7 +4,7 @@ Donate link: https://example.com/
 Tags: version, file, manager, version manager
 Requires at least: 6.6
 Tested up to: 6.6
-Stable tag: 0.11.7
+Stable tag: 0.11.8
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -27,6 +27,9 @@ Reach out to me at riley@sandb.org
 2. This is the second screen shot
 
 == Changelog ==
+
+= 0.11.8 =
+* Add support for showing description, version, size, and categories in the file table template
 
 = 0.11.7 =
 * Fix a bug where the file upload wasn't working
