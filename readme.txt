@@ -4,7 +4,7 @@ Donate link: https://example.com/
 Tags: version, file, manager, version manager
 Requires at least: 6.6
 Tested up to: 6.6
-Stable tag: 0.11.5
+Stable tag: 0.11.6
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -27,6 +27,9 @@ Reach out to me at riley@sandb.org
 2. This is the second screen shot
 
 == Changelog ==
+
+= 0.11.6 =
+* Add database upgrade functionality
 
 = 0.11.5 =
 * Add better nginx detection
