@@ -35,6 +35,10 @@ class Shortcode {
 			'id' => 0,
 			'tpl' => '',
 			'title' => false,
+			'show_description' => true,
+			'show_version' => true,
+			'show_size' => true,
+			'show_categories' => true,
 		), $atts, 'fvm' );
 
 		if ( $atts['tag'] === 'file' || empty( $atts['tag'] ) ) {
@@ -236,7 +240,12 @@ class Shortcode {
 	private function table( $files, $atts ) {
 		$files = is_array( $files ) ? $files : array( $files );
 
-		$has_description = array_reduce( $files, function ($carry, $file) {
+		$show_description = isset( $atts['show_description'] ) ? filter_var( $atts['show_description'], FILTER_VALIDATE_BOOLEAN ) : true;
+		$show_version = isset( $atts['show_version'] ) ? filter_var( $atts['show_version'], FILTER_VALIDATE_BOOLEAN ) : true;
+		$show_size = isset( $atts['show_size'] ) ? filter_var( $atts['show_size'], FILTER_VALIDATE_BOOLEAN ) : true;
+		$show_categories = isset( $atts['show_categories'] ) ? filter_var( $atts['show_categories'], FILTER_VALIDATE_BOOLEAN ) : true;
+
+		$has_description = $show_description && array_reduce( $files, function ($carry, $file) {
 			return $carry || ! empty( $file->file_description );
 		}, false );
 
@@ -266,9 +275,15 @@ class Shortcode {
 					<?php if ( $has_description ) : ?>
 						<th>Description</th>
 					<?php endif; ?>
-					<th>Version</th>
-					<th>File Size</th>
-					<th>Categories</th>
+					<?php if ( $show_version ) : ?>
+						<th>Version</th>
+					<?php endif; ?>
+					<?php if ( $show_size ) : ?>
+						<th>File Size</th>
+					<?php endif; ?>
+					<?php if ( $show_categories ) : ?>
+						<th>Categories</th>
+					<?php endif; ?>
 				</tr>
 			</thead>
 			<tbody>
@@ -280,9 +295,15 @@ class Shortcode {
 						<?php if ( $has_description ) : ?>
 							<td><?php echo esc_html( $file->file_description ); ?></td>
 						<?php endif; ?>
-						<td><?php echo esc_html( $file->file_version ); ?></td>
-						<td><?php echo esc_html( size_format( $file->file_size, 1 ) ); ?></td>
-						<td><?php echo esc_html( implode( ', ', $file_categories[ $file->id ] ?? [] ) ); ?></td>
+						<?php if ( $show_version ) : ?>
+							<td><?php echo esc_html( $file->file_version ); ?></td>
+						<?php endif; ?>
+						<?php if ( $show_size ) : ?>
+							<td><?php echo esc_html( size_format( $file->file_size, 1 ) ); ?></td>
+						<?php endif; ?>
+						<?php if ( $show_categories ) : ?>
+							<td><?php echo esc_html( implode( ', ', $file_categories[ $file->id ] ?? [] ) ); ?></td>
+						<?php endif; ?>
 					</tr>
 				<?php endforeach; ?>
 			</tbody>
