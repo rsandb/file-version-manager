@@ -35,6 +35,7 @@ require_once __DIR__ . '/classes/MigrateFilebasePro.php';
 require_once __DIR__ . '/classes/CategoryPage.php';
 require_once __DIR__ . '/classes/CategoryListTable.php';
 require_once __DIR__ . '/classes/CategoryManager.php';
+require_once __DIR__ . '/classes/DatabaseUpgrade.php';
 
 global $wpdb;
 $update_ids = new MigrateFilebasePro( $wpdb );
@@ -44,6 +45,7 @@ $file_page = new FilePage( $file_manager );
 $settings_page = new SettingsPage( $update_ids );
 $category_manager = new CategoryManager( $wpdb );
 $category_page = new CategoryPage( $category_manager );
+$database_upgrade = new DatabaseUpgrade( $wpdb );
 
 $plugin = new Plugin(
 	$file_manager,
@@ -52,6 +54,7 @@ $plugin = new Plugin(
 	$category_page,
 	$settings_page,
 	$shortcode,
+	$database_upgrade
 );
 
 $plugin->init();

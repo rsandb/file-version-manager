@@ -125,8 +125,16 @@ class SettingsPage {
 				<div class="fvm-settings-tabs">
 					<a class="fvm-settings-tab <?php echo $active_tab === 'settings' ? 'active' : ''; ?>"
 						href="?page=fvm_settings&tab=settings">Settings</a>
-					<a class="fvm-settings-tab <?php echo $active_tab === 'wp-filebase-pro' ? 'active' : ''; ?>"
-						href="?page=fvm_settings&tab=wp-filebase-pro">WP-Filebase Pro</a>
+
+					<?php
+					global $wpdb;
+					if ( $wpdb->get_var( "SHOW TABLES LIKE 'wpfb_files'" ) == 'wpfb_files' ) {
+						?>
+						<a class="fvm-settings-tab <?php echo $active_tab === 'wp-filebase-pro' ? 'active' : ''; ?>"
+							href="?page=fvm_settings&tab=wp-filebase-pro">WP-Filebase Pro</a>
+						<?php
+					}
+					?>
 				</div>
 			</div>
 			<div class="fvm_settings-container">
@@ -213,6 +221,26 @@ class SettingsPage {
 
 			<?php submit_button(); ?>
 		</form>
+
+		<div class="fvm_settings-section" style="margin-top: 30px;">
+			<h2>Database Upgrade</h2>
+			<div class="fvm_settings-section-content">
+				<div class="fvm_field-group">
+					<h3>Upgrade Database Tables</h3>
+					<div class="fvm_input-group">
+						<p>
+							Click the button below to upgrade the database tables to the latest version.
+							This process will add any missing columns without losing existing data.
+						</p>
+					</div>
+					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+						<input type="hidden" name="action" value="fvm_upgrade_database">
+						<?php wp_nonce_field( 'fvm_upgrade_database', 'fvm_upgrade_database_nonce' ); ?>
+						<?php submit_button( 'Upgrade Database', 'primary', 'upgrade_database' ); ?>
+					</form>
+				</div>
+			</div>
+		</div>
 		<?php
 	}
 

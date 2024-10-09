@@ -10,6 +10,7 @@ class Plugin {
 	private $settings_page;
 	private $shortcode;
 	private $update_ids;
+	private $database_upgrade;
 
 	public function __construct(
 		FileManager $file_manager,
@@ -17,7 +18,8 @@ class Plugin {
 		CategoryManager $category_manager,
 		CategoryPage $category_page,
 		SettingsPage $settings_page,
-		Shortcode $shortcode
+		Shortcode $shortcode,
+		DatabaseUpgrade $database_upgrade
 	) {
 		$this->file_manager = $file_manager;
 		$this->file_page = $file_page;
@@ -25,6 +27,7 @@ class Plugin {
 		$this->category_page = $category_page;
 		$this->settings_page = $settings_page;
 		$this->shortcode = $shortcode;
+		$this->database_upgrade = $database_upgrade;
 	}
 
 	public function init() {
@@ -32,6 +35,8 @@ class Plugin {
 		add_action( 'init', [ $this, 'add_rewrite_rules' ] );
 		add_action( 'init', [ $this, 'maybe_flush_rewrite_rules' ] );
 		add_action( 'admin_notices', [ $this, 'display_server_notice' ] );
+		add_action( 'admin_notices', [ $this, 'display_upgrade_notice' ] );
+		add_action( 'admin_post_fvm_upgrade_database', [ $this, 'handle_database_upgrade' ] );
 	}
 
 	public function setup() {
@@ -53,6 +58,16 @@ class Plugin {
 		}
 	}
 
+	public function display_upgrade_notice() {
+		if ( isset( $_GET['page'] ) && $_GET['page'] === 'fvm_settings' && isset( $_GET['upgraded'] ) ) {
+			?>
+			<div class="notice notice-success is-dismissible">
+				<p><?php _e( 'Database upgraded successfully.', 'file-version-manager' ); ?></p>
+			</div>
+			<?php
+		}
+	}
+
 	public function add_rewrite_rules() {
 		add_rewrite_rule(
 			'download/([^/]+)/?$',
@@ -68,6 +83,28 @@ class Plugin {
 			flush_rewrite_rules();
 			delete_option( 'fvm_flush_rewrite_rules' );
 		}
+	}
+
+	public function handle_database_upgrade() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( 'Unauthorized' );
+		}
+
+		check_admin_referer( 'fvm_upgrade_database', 'fvm_upgrade_database_nonce' );
+
+		$this->database_upgrade->upgrade_database();
+		update_option( 'fvm_db_version', $this->get_plugin_version() );
+
+		wp_safe_redirect( add_query_arg( [ 'page' => 'fvm_settings', 'upgraded' => '1' ], admin_url( 'admin.php' ) ) );
+		exit;
+	}
+
+	private function get_plugin_version() {
+		if ( ! function_exists( 'get_plugin_data' ) ) {
+			require_once( ABSPATH . 'wp-admin/includes/plugin.php' );
+		}
+		$plugin_data = get_plugin_data( plugin_dir_path( __DIR__ ) . 'file-version-manager.php' );
+		return $plugin_data['Version'];
 	}
 
 	/**
@@ -166,7 +203,7 @@ class Plugin {
 			if ( ! empty( $custom_folder ) ) {
 				$custom_dir = trailingslashit( $upload_dir['basedir'] ) . trim( $custom_folder, '/' );
 			} else {
-				$custom_dir = $upload_dir['basedir'] . '/file-version-manager';
+				$custom_dir = $upload_dir['basedir'] . '/filebase';
 			}
 
 			$total_size = $this->get_directory_size( $custom_dir );
@@ -177,7 +214,7 @@ class Plugin {
 			$upload_dir = wp_upload_dir();
 			$current_dir = ! empty( $custom_folder )
 				? trailingslashit( $upload_dir['basedir'] ) . trim( $custom_folder, '/' )
-				: trailingslashit( $upload_dir['basedir'] ) . 'file-version-manager';
+				: trailingslashit( $upload_dir['basedir'] ) . 'filebase';
 			return "Modifying files in this directory: " . $current_dir;
 		}
 
