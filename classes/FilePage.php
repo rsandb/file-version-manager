@@ -99,7 +99,7 @@ class FilePage {
 								<p id="fvm-file-name"></p>
 								<span class="fvm-clear-file dashicons dashicons-no-alt"></span>
 							</div>
-							<input type="file" name="file[]" id="fvm-file-input" style="display: none;" multiple required>
+							<input type="file" name="file[]" id="fvm-file-input" style="display: none;" multiple>
 							<button type="button" id="fvm-select-file" class="browser button button-hero">Select Files</button>
 							<input type="submit" name="fvm_upload_file" id="fvm-upload-button" value="Upload Files"
 								class="button button-primary button-hero" style="display: none;">
@@ -302,7 +302,6 @@ class FilePage {
 							handleFiles(files);
 						}
 
-						// Select file button functionality
 						selectFileBtn.addEventListener('click', () => {
 							fileInput.click();
 						});
@@ -326,6 +325,11 @@ class FilePage {
 								if (postUploadInfo) {
 									postUploadInfo.style.display = 'none';
 								}
+
+								// Create a new FileList object
+								const dataTransfer = new DataTransfer();
+								Array.from(files).forEach(file => dataTransfer.items.add(file));
+								fileInput.files = dataTransfer.files;
 							}
 						}
 
@@ -552,8 +556,18 @@ class FilePage {
 	 * @return void
 	 */
 	public function handle_file_upload() {
-		if ( isset( $_POST['fvm_upload_file'] ) && isset( $_FILES['file'] ) ) {
+		if ( isset( $_POST['fvm_upload_file'] ) ) {
 			check_admin_referer( 'fvm_file_upload', 'fvm_file_upload_nonce' );
+
+			if ( ! isset( $_FILES['file'] ) || ! is_array( $_FILES['file'] ) ) {
+				fvm_redirect_with_message( 'fvm_files', 'error', 'No file data received.' );
+				return;
+			}
+
+			if ( empty( $_FILES['file']['name'][0] ) ) {
+				fvm_redirect_with_message( 'fvm_files', 'error', 'No file selected for upload.' );
+				return;
+			}
 
 			$upload_results = $this->file_manager->upload_files( $_FILES['file'] );
 
@@ -562,7 +576,7 @@ class FilePage {
 				$message = sprintf( _n( '%s file uploaded successfully.', '%s files uploaded successfully.', $count, 'file-version-manager' ), number_format_i18n( $count ) );
 				fvm_redirect_with_message( 'fvm_files', 'success', $message );
 			} else {
-				fvm_redirect_with_message( 'fvm_files', 'error', 'Error uploading files.' );
+				fvm_redirect_with_message( 'fvm_files', 'error', 'Error uploading files. Please check file permissions and PHP upload settings.' );
 			}
 		}
 	}
