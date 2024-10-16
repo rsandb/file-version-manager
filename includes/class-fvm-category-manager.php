@@ -1,7 +1,7 @@
 <?php
 namespace FVM\FileVersionManager;
 
-class CategoryManager {
+class FVM_Category_Manager {
 	private $wpdb;
 	private $category_table_name;
 	private $file_table_name;
@@ -9,9 +9,9 @@ class CategoryManager {
 
 	public function __construct( \wpdb $wpdb ) {
 		$this->wpdb = $wpdb;
-		$this->category_table_name = $wpdb->prefix . Constants::CAT_TABLE_NAME;
-		$this->file_table_name = $wpdb->prefix . Constants::FILE_TABLE_NAME;
-		$this->rel_table_name = $wpdb->prefix . Constants::REL_TABLE_NAME;
+		$this->category_table_name = $wpdb->prefix . CAT_TABLE_NAME;
+		$this->file_table_name = $wpdb->prefix . FILE_TABLE_NAME;
+		$this->rel_table_name = $wpdb->prefix . REL_TABLE_NAME;
 	}
 
 	/**
@@ -170,7 +170,7 @@ class CategoryManager {
 	public function display_category_options( $categories, $depth = 0 ) {
 		foreach ( $categories as $category ) {
 			echo '<option value="' . esc_attr( $category->id ) . '">'
-				. str_repeat( '&nbsp;', $depth * 3 ) . esc_html( $category->cat_name )
+				. esc_html( str_repeat( '&nbsp;', $depth * 3 ) . $category->cat_name )
 				. '</option>';
 
 			if ( ! empty( $category->children ) ) {

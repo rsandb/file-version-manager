@@ -2,7 +2,7 @@
 /*
 Plugin Name: File Version Manager
 Description: Conveniently upload and update files site-wide.
-Version: 0.11.8
+Version: 0.12.0
 Author: Riley Sandborg
 Author URI: https://rileysandb.org/
 License: GPLv2 or later
@@ -14,40 +14,49 @@ Text Domain: file-version-manager
 
 namespace FVM\FileVersionManager;
 
-if ( ! defined( 'ABSPATH' ) ) {
-	exit;
+// If this file is called directly, abort.
+if ( ! defined( 'WPINC' ) ) {
+	die;
 }
+
+// Define constants
+define( 'FVM_VERSION', '0.12.0' );
+define( 'FILE_TABLE_NAME', 'fvm_files' );
+define( 'CAT_TABLE_NAME', 'fvm_categories' );
+define( 'REL_TABLE_NAME', 'fvm_relationships' );
+define( 'UPLOAD_DIR', 'filebase' );
+define( 'PLUGIN_DIR', __DIR__ . '/../' );
 
 define( 'FVM\FileVersionManager\PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
-require_once __DIR__ . '/includes/Constants.php';
 require_once __DIR__ . '/includes/functions.php';
 require_once __DIR__ . '/includes/ajax-handler.php';
-require_once __DIR__ . '/classes/Plugin.php';
-require_once __DIR__ . '/classes/FileManager.php';
-require_once __DIR__ . '/classes/FilePage.php';
-require_once __DIR__ . '/classes/SettingsPage.php';
-require_once __DIR__ . '/classes/Shortcode.php';
-require_once __DIR__ . '/classes/Activate.php';
-require_once __DIR__ . '/classes/Deactivate.php';
-require_once __DIR__ . '/classes/FileListTable.php';
-require_once __DIR__ . '/classes/MigrateFilebasePro.php';
-require_once __DIR__ . '/classes/CategoryPage.php';
-require_once __DIR__ . '/classes/CategoryListTable.php';
-require_once __DIR__ . '/classes/CategoryManager.php';
-require_once __DIR__ . '/classes/DatabaseUpgrade.php';
+
+require_once __DIR__ . '/includes/class-fvm-plugin.php';
+require_once __DIR__ . '/includes/class-fvm-file-manager.php';
+require_once __DIR__ . '/includes/class-fvm-file-page.php';
+require_once __DIR__ . '/includes/class-fvm-settings-page.php';
+require_once __DIR__ . '/includes/class-fvm-shortcode.php';
+require_once __DIR__ . '/includes/class-fvm-activate.php';
+require_once __DIR__ . '/includes/class-fvm-deactivate.php';
+require_once __DIR__ . '/includes/class-fvm-file-list-table.php';
+require_once __DIR__ . '/includes/class-fvm-migrate-wpfb.php';
+require_once __DIR__ . '/includes/class-fvm-category-page.php';
+require_once __DIR__ . '/includes/class-fvm-category-list-table.php';
+require_once __DIR__ . '/includes/class-fvm-category-manager.php';
+require_once __DIR__ . '/includes/class-fvm-db-upgrade.php';
 
 global $wpdb;
-$update_ids = new MigrateFilebasePro( $wpdb );
-$file_manager = new FileManager( $wpdb );
-$shortcode = new Shortcode( $wpdb );
-$file_page = new FilePage( $file_manager );
-$settings_page = new SettingsPage( $update_ids );
-$category_manager = new CategoryManager( $wpdb );
-$category_page = new CategoryPage( $category_manager );
-$database_upgrade = new DatabaseUpgrade( $wpdb );
+$update_ids = new FVM_Migrate_WPFB( $wpdb );
+$file_manager = new FVM_File_Manager( $wpdb );
+$shortcode = new FVM_Shortcode( $wpdb );
+$file_page = new FVM_File_Page( $file_manager );
+$settings_page = new FVM_Settings_Page( $update_ids );
+$category_manager = new FVM_Category_Manager( $wpdb );
+$category_page = new FVM_Category_Page( $category_manager );
+$database_upgrade = new FVM_Database_Upgrade( $wpdb );
 
-$plugin = new Plugin(
+$plugin = new FVM_Plugin(
 	$file_manager,
 	$file_page,
 	$category_manager,
@@ -59,8 +68,8 @@ $plugin = new Plugin(
 
 $plugin->init();
 
-register_activation_hook( __FILE__, [ Activate::class, 'activate' ] );
-register_deactivation_hook( __FILE__, [ Deactivate::class, 'deactivate' ] );
+register_activation_hook( __FILE__, [ FVM_Activate::class, 'activate' ] );
+register_deactivation_hook( __FILE__, [ FVM_Deactivate::class, 'deactivate' ] );
 
 add_filter( 'upload_mimes', function ($mimes) {
 	$mimes['xml'] = 'application/xml';
@@ -76,7 +85,7 @@ add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), function ($lin
 	return $links;
 } );
 
-require 'plugin-update-checker/plugin-update-checker.php';
+require 'vendor/plugin-update-checker/plugin-update-checker.php';
 use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
 
 $myUpdateChecker = PucFactory::buildUpdateChecker(

@@ -9,7 +9,7 @@ use Exception;
  * - Grabs file data from the wp_wpfb_files and wp_wpfb_cats tables and imports it into the plugin's tables.
  * - Logs the processes for debugging
  */
-class MigrateFilebasePro {
+class FVM_Migrate_WPFB {
 	private $log = [];
 	private $highest_id = 0;
 	private $wpdb;
@@ -20,10 +20,10 @@ class MigrateFilebasePro {
 
 	public function __construct( $wpdb ) {
 		$this->wpdb = $wpdb;
-		$this->file_table_name = $wpdb->prefix . Constants::FILE_TABLE_NAME;
-		$this->category_table_name = $wpdb->prefix . Constants::CAT_TABLE_NAME;
-		$this->rel_table_name = $wpdb->prefix . Constants::REL_TABLE_NAME;
-		$this->file_manager = new FileManager( $wpdb );
+		$this->file_table_name = $wpdb->prefix . FILE_TABLE_NAME;
+		$this->category_table_name = $wpdb->prefix . CAT_TABLE_NAME;
+		$this->rel_table_name = $wpdb->prefix . REL_TABLE_NAME;
+		$this->file_manager = new FVM_File_Manager( $wpdb );
 	}
 
 	/**
@@ -361,7 +361,7 @@ class MigrateFilebasePro {
 			$this->log[] = "----------------------------------";
 		} else {
 			$this->log[] = "Error updating file: " . htmlspecialchars( $file_name ) . " with ID: $new_id";
-			throw new Exception( "Database error: " . $this->wpdb->last_error );
+			throw new Exception( "Database error: " . esc_html( $this->wpdb->last_error ) );
 		}
 	}
 

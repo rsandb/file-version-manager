@@ -13,7 +13,7 @@ function fvm_get_file_data() {
 		wp_send_json_error( 'Invalid file ID' );
 	}
 
-	$file_manager = new FVM\FileVersionManager\FileManager( $GLOBALS['wpdb'] );
+	$file_manager = new FVM\FileVersionManager\FVM_File_Manager( $GLOBALS['wpdb'] );
 	$file_data = $file_manager->get_file_data( $file_id );
 
 	if ( $file_data ) {
@@ -36,7 +36,7 @@ function fvm_get_category_data() {
 		wp_send_json_error( 'Invalid category ID' );
 	}
 
-	$category_manager = new FVM\FileVersionManager\CategoryManager( $GLOBALS['wpdb'] );
+	$category_manager = new FVM\FileVersionManager\FVM_Category_Manager( $GLOBALS['wpdb'] );
 	$category_data = $category_manager->get_category_data( $category_id );
 
 	if ( $category_data ) {

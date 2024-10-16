@@ -1,10 +1,10 @@
 <?php
 namespace FVM\FileVersionManager;
 
-class SettingsPage {
+class FVM_Settings_Page {
 	private $update_ids;
 
-	public function __construct( MigrateFilebasePro $update_ids ) {
+	public function __construct( FVM_Migrate_WPFB $update_ids ) {
 		$this->update_ids = $update_ids;
 	}
 
@@ -60,7 +60,7 @@ class SettingsPage {
 		if ( function_exists( 'get_current_screen' ) ) {
 			$screen = get_current_screen();
 			if ( $screen && $screen->id === 'files_page_fvm_settings' ) {
-				wp_enqueue_style( 'file-version-manager-styles', plugin_dir_url( dirname( __FILE__ ) ) . 'css/settings.css' );
+				wp_enqueue_style( 'file-version-manager-styles', plugin_dir_url( dirname( __FILE__ ) ) . 'assets/css/file-version-manager-settings.css', [], '1.0.0' );
 			}
 		}
 	}
@@ -76,7 +76,7 @@ class SettingsPage {
 		}
 
 		$class = ( $status === 'success' ) ? 'notice-success' : 'notice-error';
-		echo "<div class='notice $class is-dismissible'><p>$message</p></div>";
+		echo "<div class='notice " . esc_attr( $class ) . " is-dismissible'><p>" . esc_html( $message ) . "</p></div>";
 	}
 
 	private function redirect_with_notification( $status, $message ) {
@@ -96,8 +96,8 @@ class SettingsPage {
 			$status = $notification['status'];
 			$message = $notification['message'];
 			?>
-			<div class="notice notice-<?php echo $status === 'success' ? 'success' : 'error'; ?> is-dismissible">
-				<p><?php echo nl2br( esc_html( $message ) ); ?></p>
+			<div class="notice notice-<?php echo esc_attr( $status === 'success' ? 'success' : 'error' ); ?> is-dismissible">
+				<p><?php echo wp_kses_post( nl2br( $message ) ); ?></p>
 			</div>
 			<?php
 			delete_transient( 'fvm_admin_notification' );
@@ -125,16 +125,8 @@ class SettingsPage {
 				<div class="fvm-settings-tabs">
 					<a class="fvm-settings-tab <?php echo $active_tab === 'settings' ? 'active' : ''; ?>"
 						href="?page=fvm_settings&tab=settings">Settings</a>
-
-					<?php
-					global $wpdb;
-					if ( $wpdb->get_var( "SHOW TABLES LIKE 'wpfb_files'" ) == 'wpfb_files' ) {
-						?>
-						<a class="fvm-settings-tab <?php echo $active_tab === 'wp-filebase-pro' ? 'active' : ''; ?>"
-							href="?page=fvm_settings&tab=wp-filebase-pro">WP-Filebase Pro</a>
-						<?php
-					}
-					?>
+					<a class="fvm-settings-tab <?php echo $active_tab === 'wp-filebase-pro' ? 'active' : ''; ?>"
+						href="?page=fvm_settings&tab=wp-filebase-pro">WP-Filebase Pro</a>
 				</div>
 			</div>
 			<div class="fvm_settings-container">
@@ -253,8 +245,8 @@ class SettingsPage {
 		global $wpdb;
 		$files_table = $wpdb->prefix . 'wpfb_files';
 		$cats_table = $wpdb->prefix . 'wpfb_cats';
-		$file_count = $wpdb->get_var( "SELECT COUNT(*) FROM $files_table" );
-		$category_count = $wpdb->get_var( "SELECT COUNT(*) FROM $cats_table" );
+		$file_count = $this->get_wpfilebase_file_count();
+		$category_count = $this->get_wpfilebase_category_count();
 
 		$import_message = get_transient( 'fvm_import_message' );
 		if ( $import_message ) {
@@ -324,6 +316,34 @@ class SettingsPage {
 			</div>
 		</div>
 		<?php
+	}
+
+	private function get_wpfilebase_file_count() {
+		global $wpdb;
+		$files_table = $wpdb->prefix . 'wpfb_files';
+		$cache_key = 'fvm_wpfilebase_file_count';
+		$file_count = wp_cache_get( $cache_key );
+
+		if ( false === $file_count ) {
+			$file_count = $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM %i", $files_table ) );
+			wp_cache_set( $cache_key, $file_count, '', 3600 ); // Cache for 1 hour
+		}
+
+		return $file_count;
+	}
+
+	private function get_wpfilebase_category_count() {
+		global $wpdb;
+		$cats_table = $wpdb->prefix . 'wpfb_cats';
+		$cache_key = 'fvm_wpfilebase_category_count';
+		$category_count = wp_cache_get( $cache_key );
+
+		if ( false === $category_count ) {
+			$category_count = $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM %i", $cats_table ) );
+			wp_cache_set( $cache_key, $category_count, '', 3600 ); // Cache for 1 hour
+		}
+
+		return $category_count;
 	}
 
 	public function handle_wpfilebase_import() {

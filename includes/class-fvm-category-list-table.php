@@ -9,14 +9,14 @@ if ( ! class_exists( 'WP_List_Table' ) ) {
 	require_once( ABSPATH . 'wp-admin/includes/class-wp-list-table.php' );
 }
 
-class CategoryListTable extends \WP_List_Table {
+class FVM_Category_List_Table extends \WP_List_Table {
 	private $wpdb;
 	private $category_manager;
 	private $category_table_name;
 	private $file_table_name;
 	private $rel_table_name;
 
-	public function __construct( CategoryManager $category_manager ) {
+	public function __construct( FVM_Category_Manager $category_manager ) {
 		parent::__construct( [ 
 			'singular' => 'category',
 			'plural' => 'categories',
@@ -25,9 +25,9 @@ class CategoryListTable extends \WP_List_Table {
 		global $wpdb;
 		$this->wpdb = $wpdb;
 		$this->category_manager = $category_manager;
-		$this->category_table_name = $wpdb->prefix . Constants::CAT_TABLE_NAME;
-		$this->file_table_name = $wpdb->prefix . Constants::FILE_TABLE_NAME;
-		$this->rel_table_name = $wpdb->prefix . Constants::REL_TABLE_NAME;
+		$this->category_table_name = $wpdb->prefix . CAT_TABLE_NAME;
+		$this->file_table_name = $wpdb->prefix . FILE_TABLE_NAME;
+		$this->rel_table_name = $wpdb->prefix . REL_TABLE_NAME;
 	}
 
 	public function prepare_items() {
@@ -89,9 +89,10 @@ class CategoryListTable extends \WP_List_Table {
 		}
 		?>
 		<p class="search-box">
-			<label class="screen-reader-text" for="<?php echo esc_attr( $input_id ); ?>"><?php echo $text; ?>:</label>
+			<label class="screen-reader-text"
+				for="<?php echo esc_attr( $input_id ); ?>"><?php echo esc_html( $text ); ?>:</label>
 			<input type="search" id="<?php echo esc_attr( $input_id ); ?>" name="s" value="<?php _admin_search_query(); ?>" />
-			<?php submit_button( $text, '', '', false, array( 'id' => 'search-submit' ) ); ?>
+			<?php submit_button( esc_html( $text ), '', '', false, array( 'id' => 'search-submit' ) ); ?>
 		</p>
 		<?php
 	}
@@ -173,7 +174,7 @@ class CategoryListTable extends \WP_List_Table {
 			if ( $category->id != $current_id ) {
 				$padding = str_repeat( '&nbsp;', $depth * 3 );
 				$selected = ( $selected_id == $category->id ) ? 'selected' : '';
-				echo "<option value='" . esc_attr( $category->id ) . "' $selected>" . $padding . esc_html( $category->cat_name ) . "</option>";
+				echo "<option value='" . esc_attr( $category->id ) . "' " . esc_attr( $selected ) . ">" . wp_kses_post( $padding ) . esc_html( $category->cat_name ) . "</option>";
 				if ( ! empty( $category->children ) ) {
 					$this->display_category_options( $category->children, $selected_id, $current_id, $depth + 1 );
 				}

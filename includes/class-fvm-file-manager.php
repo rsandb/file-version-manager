@@ -4,7 +4,7 @@ namespace FVM\FileVersionManager;
 
 #todo: add user id to file data when uploading and editing a file
 
-class FileManager {
+class FVM_File_Manager {
 	private $upload_dir;
 	private $custom_folder;
 	private $wpdb;
@@ -14,9 +14,9 @@ class FileManager {
 
 	public function __construct( \wpdb $wpdb ) {
 		$this->wpdb = $wpdb;
-		$this->file_table_name = $wpdb->prefix . Constants::FILE_TABLE_NAME;
-		$this->cat_table_name = $wpdb->prefix . Constants::CAT_TABLE_NAME;
-		$this->rel_table_name = $wpdb->prefix . Constants::REL_TABLE_NAME;
+		$this->file_table_name = $wpdb->prefix . FILE_TABLE_NAME;
+		$this->cat_table_name = $wpdb->prefix . CAT_TABLE_NAME;
+		$this->rel_table_name = $wpdb->prefix . REL_TABLE_NAME;
 		$this->custom_folder = 'filebase';
 		$this->set_upload_dir();
 	}

@@ -2,14 +2,14 @@
 
 namespace FVM\FileVersionManager;
 
-class Activate {
+class FVM_Activate {
 
 	public static function activate() {
 		global $wpdb;
 
-		$table_name = $wpdb->prefix . Constants::FILE_TABLE_NAME;
-		$cat_table_name = $wpdb->prefix . Constants::CAT_TABLE_NAME;
-		$rel_table_name = $wpdb->prefix . Constants::REL_TABLE_NAME;
+		$table_name = $wpdb->prefix . FILE_TABLE_NAME;
+		$cat_table_name = $wpdb->prefix . CAT_TABLE_NAME;
+		$rel_table_name = $wpdb->prefix . REL_TABLE_NAME;
 		$charset_collate = $wpdb->get_charset_collate();
 
 		self::create_tables( $wpdb, $table_name, $cat_table_name, $rel_table_name, $charset_collate );
@@ -29,7 +29,7 @@ class Activate {
 	private static function create_tables( $wpdb, $table_name, $cat_table_name, $rel_table_name, $charset_collate ) {
 
 		// Files table
-		self::$sql = $wpdb->prepare(
+		self::$sql =
 			"CREATE TABLE IF NOT EXISTS $table_name (
 				id mediumint(9) NOT NULL AUTO_INCREMENT,
 				file_name varchar(255) NOT NULL,
@@ -50,10 +50,10 @@ class Activate {
 				date_modified datetime NOT NULL,
 				PRIMARY KEY  (id)
 			) $charset_collate;"
-		);
+		;
 
 		// Categories table
-		self::$cat_sql = $wpdb->prepare(
+		self::$cat_sql =
 			"CREATE TABLE IF NOT EXISTS $cat_table_name (
 				id mediumint(9) NOT NULL AUTO_INCREMENT,
 				cat_name varchar(255) NOT NULL,
@@ -64,10 +64,10 @@ class Activate {
 				PRIMARY KEY (id),
 				UNIQUE KEY cat_slug (cat_slug)
 			) $charset_collate;"
-		);
+		;
 
 		// File-Category Relationship table
-		self::$file_category_sql = $wpdb->prepare(
+		self::$file_category_sql =
 			"CREATE TABLE IF NOT EXISTS $rel_table_name (
 				id mediumint(9) NOT NULL AUTO_INCREMENT,
 				file_id mediumint(9) NOT NULL,
@@ -77,6 +77,6 @@ class Activate {
 				FOREIGN KEY (file_id) REFERENCES $table_name(id) ON DELETE CASCADE,
 				FOREIGN KEY (category_id) REFERENCES $cat_table_name(id) ON DELETE CASCADE
 			) $charset_collate;"
-		);
+		;
 	}
 }

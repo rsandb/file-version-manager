@@ -1,12 +1,12 @@
 <?php
 namespace FVM\FileVersionManager;
 
-class CategoryPage {
+class FVM_Category_Page {
 	private $category_manager;
 	private $category_list_table;
 	private $page_hook;
 
-	public function __construct( CategoryManager $category_manager ) {
+	public function __construct( FVM_Category_Manager $category_manager ) {
 		$this->category_manager = $category_manager;
 	}
 
@@ -35,14 +35,14 @@ class CategoryPage {
 		if ( function_exists( 'get_current_screen' ) ) {
 			$screen = get_current_screen();
 			if ( $screen && $screen->id === 'files_page_fvm_categories' ) {
-				wp_enqueue_style( 'file-version-manager-styles', plugin_dir_url( dirname( __FILE__ ) ) . 'css/categories.css' );
-				wp_enqueue_style( 'file-version-manager-admin-styles', plugin_dir_url( dirname( __FILE__ ) ) . 'css/admin.css' );
+				wp_enqueue_style( 'file-version-manager-styles', plugin_dir_url( dirname( __FILE__ ) ) . 'assets/css/file-version-manager-categories.css', [], '1.0.0' );
+				wp_enqueue_style( 'file-version-manager-admin-styles', plugin_dir_url( dirname( __FILE__ ) ) . 'assets/css/file-version-manager-admin.css', [], '1.0.0' );
 			}
 		}
 	}
 
 	public function setup_list_table() {
-		$this->category_list_table = new CategoryListTable( $this->category_manager );
+		$this->category_list_table = new FVM_Category_List_Table( $this->category_manager );
 	}
 
 	public function display_admin_page() {
@@ -61,7 +61,7 @@ class CategoryPage {
 			if ( isset( $_GET['update'] ) && isset( $_GET['message'] ) ) {
 				$status = $_GET['update'] === 'success' ? 'updated' : 'error';
 				$message = urldecode( $_GET['message'] );
-				echo "<div class='notice $status is-dismissible'><p>$message</p></div>";
+				echo "<div class='notice " . esc_attr( $status ) . " is-dismissible'><p>" . esc_html( $message ) . "</p></div>";
 			}
 			?>
 
@@ -238,7 +238,7 @@ class CategoryPage {
 				}
 
 				function populateEditModal(categoryId) {
-					fetch(`<?php echo admin_url( 'admin-ajax.php' ); ?>?action=get_category_data&category_id=${categoryId}&_ajax_nonce=<?php echo wp_create_nonce( 'get_category_data' ); ?>`)
+					fetch(`<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>?action=get_category_data&category_id=${categoryId}&_ajax_nonce=<?php echo esc_js( wp_create_nonce( 'get_category_data' ) ); ?>`)
 						.then(response => response.json())
 						.then(data => {
 							if (data.success) {
@@ -414,6 +414,7 @@ class CategoryPage {
 
 				if ( $deleted_count > 0 ) {
 					$message = sprintf(
+						/* translators: %s: number of deleted categories */
 						_n( '%s category deleted successfully.', '%s categories deleted successfully.', $deleted_count, 'file-version-manager' ),
 						number_format_i18n( $deleted_count )
 					);

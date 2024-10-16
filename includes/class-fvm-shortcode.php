@@ -1,7 +1,7 @@
 <?php
 namespace FVM\FileVersionManager;
 
-class Shortcode {
+class FVM_Shortcode {
 	private $wpdb;
 	private $file_table_name;
 	private $cat_table_name;
@@ -9,9 +9,9 @@ class Shortcode {
 
 	public function __construct( \wpdb $wpdb ) {
 		$this->wpdb = $wpdb;
-		$this->file_table_name = $wpdb->prefix . Constants::FILE_TABLE_NAME;
-		$this->cat_table_name = $wpdb->prefix . Constants::CAT_TABLE_NAME;
-		$this->rel_table_name = $wpdb->prefix . Constants::REL_TABLE_NAME;
+		$this->file_table_name = $wpdb->prefix . FILE_TABLE_NAME;
+		$this->cat_table_name = $wpdb->prefix . CAT_TABLE_NAME;
+		$this->rel_table_name = $wpdb->prefix . REL_TABLE_NAME;
 	}
 
 	public function init() {
@@ -22,7 +22,7 @@ class Shortcode {
 	function custom_shortcode_scripts() {
 		global $post;
 		if ( isset( $post ) && is_a( $post, 'WP_Post' ) && has_shortcode( $post->post_content, 'fvm' ) ) {
-			wp_enqueue_style( 'fvm-shortcode', plugin_dir_url( __FILE__ ) . '../css/shortcode.css', array(), '1.0.0', 'all' );
+			wp_enqueue_style( 'fvm-shortcode', plugin_dir_url( __FILE__ ) . '../assets/css/file-version-manager-shortcode.css', array(), '1.0.0', 'all' );
 		}
 	}
 
@@ -337,13 +337,13 @@ class Shortcode {
 		<?php if ( ! empty( $title ) ) : ?>
 			<h2 class="fvm-toggle-title"><?php echo esc_html( $title ); ?></h2>
 		<?php endif; ?>
-		<ul id="fvm-toggle-<?php echo $category_id; ?>" class="fvm-toggle-container">
-			<?php echo $this->render_category_toggle( $categories, $direct_files, 0, $category_id ); ?>
+		<ul id="fvm-toggle-<?php echo esc_attr( $category_id ); ?>" class="fvm-toggle-container">
+			<?php echo wp_kses_post( $this->render_category_toggle( $categories, $direct_files, 0, $category_id ) ); ?>
 		</ul>
 
 		<script>
 			document.addEventListener("DOMContentLoaded", function () {
-				const toggleContainer = document.getElementById('fvm-toggle-<?php echo $category_id; ?>');
+				const toggleContainer = document.getElementById('fvm-toggle-<?php echo esc_js( $category_id ); ?>');
 				toggleContainer.addEventListener('click', function (e) {
 					const toggle = e.target.closest('.fvm-toggle-category-title');
 					if (toggle) {

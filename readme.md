@@ -1,5 +1,9 @@
 # WP File Version Manager
 
+**Stable tag:** trunk
+
+**License:** GPLv3 or later
+
 File Version Manager is a WordPress plugin that allows you to conveniently manage file versions. It uploads files to a custom directory and allows for easy updating without having to change links everywhere.
 
 This plugin is meant as a lite replacement for WP-Filebase Pro.
@@ -76,7 +80,3 @@ If you're migrating from WP-Filebase Pro:
 ## Support
 
 For support, please submit an issue on this GitHub repository.
-
-## License
-
-Help me build this 👍

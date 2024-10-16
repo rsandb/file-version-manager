@@ -7,7 +7,7 @@ if ( ! class_exists( 'WP_List_Table' ) ) {
 	require_once( ABSPATH . 'wp-admin/includes/class-wp-list-table.php' );
 }
 
-class FileListTable extends \WP_List_Table {
+class FVM_File_List_Table extends \WP_List_Table {
 	private $file_manager;
 	private $wpdb;
 	private $file_table_name;
@@ -23,19 +23,19 @@ class FileListTable extends \WP_List_Table {
 		global $wpdb;
 		$this->wpdb = $wpdb;
 		$this->file_manager = $file_manager;
-		$this->file_table_name = $wpdb->prefix . Constants::FILE_TABLE_NAME;
-		$this->cat_table_name = $wpdb->prefix . Constants::CAT_TABLE_NAME;
-		$this->rel_table_name = $wpdb->prefix . Constants::REL_TABLE_NAME;
+		$this->file_table_name = $wpdb->prefix . FILE_TABLE_NAME;
+		$this->cat_table_name = $wpdb->prefix . CAT_TABLE_NAME;
+		$this->rel_table_name = $wpdb->prefix . REL_TABLE_NAME;
 	}
 
 	private function get_table_name( $table ) {
 		global $wpdb;
 		if ( $table === 'category' ) {
-			return $wpdb->prefix . Constants::CAT_TABLE_NAME;
+			return $wpdb->prefix . CAT_TABLE_NAME;
 		} elseif ( $table === 'files' ) {
-			return $wpdb->prefix . Constants::FILE_TABLE_NAME;
+			return $wpdb->prefix . FILE_TABLE_NAME;
 		}
-		return $wpdb->prefix . Constants::CAT_TABLE_NAME;
+		return $wpdb->prefix . CAT_TABLE_NAME;
 	}
 
 	public function prepare_items() {

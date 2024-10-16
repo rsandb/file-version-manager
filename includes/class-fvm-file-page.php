@@ -4,12 +4,12 @@ namespace FVM\FileVersionManager;
 
 #todo: instead of generating edit forms for each file, generate a single edit form that can be used for all files
 
-class FilePage {
+class FVM_File_Page {
 	private $file_manager;
 	private $wp_list_table;
 	private $file_list_table;
 
-	public function __construct( FileManager $file_manager ) {
+	public function __construct( FVM_File_Manager $file_manager ) {
 		$this->file_manager = $file_manager;
 	}
 
@@ -52,13 +52,13 @@ class FilePage {
 		if ( function_exists( 'get_current_screen' ) ) {
 			$screen = get_current_screen();
 			if ( $screen && $screen->id === 'toplevel_page_fvm_files' ) {
-				wp_enqueue_style( 'file-version-manager-styles', plugin_dir_url( dirname( __FILE__ ) ) . 'css/admin.css' );
+				wp_enqueue_style( 'file-version-manager-styles', plugin_dir_url( dirname( __FILE__ ) ) . 'assets/css/file-version-manager-admin.css', [], '1.0.0' );
 			}
 		}
 	}
 
 	public function setup_list_table() {
-		$this->wp_list_table = new FileListTable( $this->file_manager );
+		$this->wp_list_table = new FVM_File_List_Table( $this->file_manager );
 	}
 
 	/**
@@ -80,11 +80,12 @@ class FilePage {
 
 		<div class="wrap">
 			<h1>File Version Manager</h1>
+
 			<?php
 			if ( isset( $_GET['update'] ) && isset( $_GET['message'] ) ) {
 				$status = $_GET['update'] === 'success' ? 'updated' : 'error';
 				$message = urldecode( $_GET['message'] );
-				echo "<div class='notice $status is-dismissible'><p>$message</p></div>";
+				echo "<div class='notice " . esc_attr( $status ) . " is-dismissible'><p>" . esc_html( $message ) . "</p></div>";
 			}
 			?>
 
@@ -106,7 +107,7 @@ class FilePage {
 						</div>
 						<div class="post-upload-ui" id="post-upload-info">
 							<p class="fvm-upload-instructions">
-								Maximum upload file size: <?php echo size_format( wp_max_upload_size() ); ?>.
+								Maximum upload file size: <?php echo esc_html( size_format( wp_max_upload_size() ) ); ?>.
 
 								<?php
 								// Check if Big File Uploads plugin is active
@@ -151,7 +152,8 @@ class FilePage {
 								</div>
 								<div class="post-upload-ui" id="post-upload-info">
 									<p class="fvm-upload-instructions">
-										Maximum upload file size: <?php echo size_format( wp_max_upload_size() ); ?>.
+										Maximum upload file size:
+										<?php echo esc_html( size_format( wp_max_upload_size() ) ); ?>.
 
 										<?php
 										// Check if Big File Uploads plugin is active
@@ -421,7 +423,7 @@ class FilePage {
 
 					// Function to populate the edit modal
 					function populateEditModal(fileId) {
-						fetch(`<?php echo admin_url( 'admin-ajax.php' ); ?>?action=get_file_data&file_id=${fileId}&_ajax_nonce=<?php echo wp_create_nonce( 'get_file_data' ); ?>`)
+						fetch(`<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>?action=get_file_data&file_id=${fileId}&_ajax_nonce=<?php echo esc_js( wp_create_nonce( 'get_file_data' ) ); ?>`)
 							.then(response => response.json())
 							.then(data => {
 								if (data.success) {
@@ -573,6 +575,7 @@ class FilePage {
 
 			if ( ! empty( $upload_results ) ) {
 				$count = count( $upload_results );
+				/* translators: %s: number of files uploaded */
 				$message = sprintf( _n( '%s file uploaded successfully.', '%s files uploaded successfully.', $count, 'file-version-manager' ), number_format_i18n( $count ) );
 				fvm_redirect_with_message( 'fvm_files', 'success', $message );
 			} else {
@@ -683,6 +686,7 @@ class FilePage {
 
 				if ( $deleted_count > 0 ) {
 					$message = sprintf(
+						/* translators: %s: number of files deleted */
 						_n( '%s file deleted successfully.', '%s files deleted successfully.', $deleted_count, 'file-version-manager' ),
 						number_format_i18n( $deleted_count )
 					);

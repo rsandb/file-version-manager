@@ -2,7 +2,7 @@
 
 namespace FVM\FileVersionManager;
 
-class Plugin {
+class FVM_Plugin {
 	private $file_manager;
 	private $file_page;
 	private $category_manager;
@@ -13,13 +13,13 @@ class Plugin {
 	private $database_upgrade;
 
 	public function __construct(
-		FileManager $file_manager,
-		FilePage $file_page,
-		CategoryManager $category_manager,
-		CategoryPage $category_page,
-		SettingsPage $settings_page,
-		Shortcode $shortcode,
-		DatabaseUpgrade $database_upgrade
+		FVM_File_Manager $file_manager,
+		FVM_File_Page $file_page,
+		FVM_Category_Manager $category_manager,
+		FVM_Category_Page $category_page,
+		FVM_Settings_Page $settings_page,
+		FVM_Shortcode $shortcode,
+		FVM_Database_Upgrade $database_upgrade
 	) {
 		$this->file_manager = $file_manager;
 		$this->file_page = $file_page;
@@ -53,7 +53,12 @@ class Plugin {
 	public function display_server_notice() {
 		if ( is_nginx() && ! get_option( 'fvm_nginx_rewrite_rules' ) ) {
 			$class = 'notice notice-error';
-			$message = __( 'Your website is running on an Nginx server. Additional setup is required for File Version Manager to work correctly. Please check the <a href="' . admin_url( 'admin.php?page=fvm_settings#nginx' ) . '">plugin settings</a> for Nginx configuration instructions.', 'file-version-manager' );
+			$settings_url = admin_url( 'admin.php?page=fvm_settings#nginx' );
+			$message = sprintf(
+				/* translators: %s: URL to plugin settings */
+				__( 'Your website is running on an Nginx server. Additional setup is required for File Version Manager to work correctly. Please check the <a href="%s">plugin settings</a> for Nginx configuration instructions.', 'file-version-manager' ),
+				esc_url( $settings_url )
+			);
 			printf( '<div class="%1$s"><p>%2$s</p></div>', esc_attr( $class ), wp_kses_post( $message ) );
 		}
 	}
@@ -62,7 +67,7 @@ class Plugin {
 		if ( isset( $_GET['page'] ) && $_GET['page'] === 'fvm_settings' && isset( $_GET['upgraded'] ) ) {
 			?>
 			<div class="notice notice-success is-dismissible">
-				<p><?php _e( 'Database upgraded successfully.', 'file-version-manager' ); ?></p>
+				<p><?php esc_html_e( 'Database upgraded successfully.', 'file-version-manager' ); ?></p>
 			</div>
 			<?php
 		}
@@ -115,7 +120,7 @@ class Plugin {
 		if ( get_query_var( 'fvm_download' ) == 1 ) {
 			$file_name = get_query_var( 'fvm_file' );
 			global $wpdb;
-			$table_name = $wpdb->prefix . Constants::FILE_TABLE_NAME;
+			$table_name = $wpdb->prefix . FILE_TABLE_NAME;
 			$file = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $table_name WHERE file_name = %s", $file_name ) );
 
 			if ( $file ) {
