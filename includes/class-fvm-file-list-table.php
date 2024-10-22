@@ -215,8 +215,8 @@ class FVM_File_List_Table extends \WP_List_Table {
 		$actions = [ 
 			'id' => sprintf( '<span>ID: %d</span>', $item['id'] ),
 			'edit' => sprintf( '<a href="#" class="edit-file" data-file-id="%d">Edit</a>', $item['id'] ),
-			'view' => sprintf( '<a href="%s" target="_blank">View</a>', esc_url( $item['file_url'] ) ),
-			'download' => sprintf( '<a href="%s" download>Download</a>', esc_url( $item['file_url'] ) ),
+			'view' => sprintf( '<a href="%s" target="_blank">View</a>', esc_url( add_query_arg( 'file', $item['file_name'], home_url() ) ) ),
+			'download' => sprintf( '<a href="%s" download>Download</a>', esc_url( add_query_arg( 'file', $item['file_name'], home_url() ) ) ),
 			'delete' => sprintf( '<a href="%s" onclick="return confirm(\'Are you sure you want to delete this file?\')">Delete</a>', wp_nonce_url( admin_url( 'admin.php?page=fvm_files&action=delete&file_id=' . $item['id'] ), 'delete_file_' . $item['id'] ) ),
 		];
 

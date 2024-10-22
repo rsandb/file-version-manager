@@ -34,6 +34,7 @@ class FVM_Plugin {
 		add_action( 'init', [ $this, 'maybe_flush_rewrite_rules' ] );
 		add_action( 'plugins_loaded', [ $this, 'setup' ] );
 		add_action( 'wp', [ $this, 'handle_file_request' ] );
+		add_action( 'wp', [ $this, 'handle_legacy_download_url' ] );
 		add_action( 'admin_notices', [ $this, 'display_server_notice' ] );
 		add_action( 'admin_notices', [ $this, 'display_upgrade_notice' ] );
 		add_action( 'admin_post_fvm_upgrade_database', [ $this, 'handle_database_upgrade' ] );
@@ -69,6 +70,17 @@ class FVM_Plugin {
 				<p><?php esc_html_e( 'Database upgraded successfully.', 'file-version-manager' ); ?></p>
 			</div>
 			<?php
+		}
+	}
+
+	public function handle_legacy_download_url() {
+		$request_uri = $_SERVER['REQUEST_URI'];
+
+		if ( strpos( $request_uri, '/download/' ) === 0 ) {
+			$file_name = basename( $request_uri );
+			$new_url = add_query_arg( 'file', $file_name, home_url() );
+			wp_redirect( $new_url, 301 );
+			exit;
 		}
 	}
 
