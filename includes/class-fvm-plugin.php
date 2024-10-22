@@ -31,9 +31,9 @@ class FVM_Plugin {
 	}
 
 	public function init() {
-		add_action( 'plugins_loaded', [ $this, 'setup' ] );
-		add_action( 'init', [ $this, 'add_rewrite_rules' ] );
 		add_action( 'init', [ $this, 'maybe_flush_rewrite_rules' ] );
+		add_action( 'plugins_loaded', [ $this, 'setup' ] );
+		add_action( 'wp', [ $this, 'handle_file_request' ] );
 		add_action( 'admin_notices', [ $this, 'display_server_notice' ] );
 		add_action( 'admin_notices', [ $this, 'display_upgrade_notice' ] );
 		add_action( 'admin_post_fvm_upgrade_database', [ $this, 'handle_database_upgrade' ] );
@@ -46,7 +46,6 @@ class FVM_Plugin {
 		$this->settings_page->init();
 		$this->shortcode->init();
 
-		add_action( 'template_redirect', [ $this, 'handle_download' ] );
 		add_filter( 'admin_footer_text', [ $this, 'custom_admin_footer_text' ], 9999 );
 	}
 
@@ -71,16 +70,6 @@ class FVM_Plugin {
 			</div>
 			<?php
 		}
-	}
-
-	public function add_rewrite_rules() {
-		add_rewrite_rule(
-			'download/([^/]+)/?$',
-			'index.php?fvm_download=1&fvm_file=$matches[1]',
-			'top'
-		);
-		add_rewrite_tag( '%fvm_download%', '([0-1]+)' );
-		add_rewrite_tag( '%fvm_file%', '([^&]+)' );
 	}
 
 	public function maybe_flush_rewrite_rules() {
@@ -112,64 +101,45 @@ class FVM_Plugin {
 		return $plugin_data['Version'];
 	}
 
-	/**
-	 * Handle viewing and downloading files
-	 * @return void
-	 */
-	function handle_download() {
-		if ( get_query_var( 'fvm_download' ) == 1 ) {
-			$file_name = get_query_var( 'fvm_file' );
-			global $wpdb;
-			$table_name = $wpdb->prefix . FILE_TABLE_NAME;
-			$file = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $table_name WHERE file_name = %s", $file_name ) );
-
-			if ( $file ) {
-				$file_path = $file->file_path;
-				if ( file_exists( $file_path ) ) {
-					$file_type = $file->file_type;
-					$mime_type = $this->get_mime_type( $file_type );
-					header( 'Content-Type: ' . $mime_type );
-
-					// Check if the file type is suitable for inline display
-					$inline_types = array(
-						'pdf',
-						'txt',
-						'html',
-						'xml',
-						'css',
-						'js',
-						'json',
-						'jpg',
-						'jpeg',
-						'png',
-						'gif',
-						'svg',
-						'webp',
-						'bmp',
-						'tiff',
-						'mp3',
-						'ogg',
-						'wav',
-						'mp4',
-						'webm',
-					);
-					if ( in_array( $file_type, $inline_types ) ) {
-						header( 'Content-Disposition: inline; filename="' . $file_name . '"' );
-					} else {
-						header( 'Content-Disposition: attachment; filename="' . $file_name . '"' );
-					}
-
-					header( 'Content-Length: ' . filesize( $file_path ) );
-					readfile( $file_path );
-					exit;
-				}
-			} else {
-				status_header( 404 );
-				nocache_headers();
-				include( get_query_template( '404' ) );
-				exit;
-			}
+	public function handle_file_request() {
+		if ( ! isset( $_GET['file'] ) ) {
+			return;
 		}
+
+		$file_name = sanitize_file_name( $_GET['file'] );
+
+		if ( ! $file_name ) {
+			return;
+		}
+
+		global $wpdb;
+		$table_name = $wpdb->prefix . FILE_TABLE_NAME;
+		$file = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $table_name WHERE file_name = %s", $file_name ) );
+
+		if ( ! $file ) {
+			return;
+		}
+
+		$file_path = $file->file_path;
+		$absolute_path = ABSPATH . $file_path;
+
+		if ( ! file_exists( $absolute_path ) ) {
+			return;
+		}
+
+		$mime_type = $this->get_mime_type( $file->file_type );
+
+		$inline_types = array( 'pdf', 'txt', 'html', 'xml', 'css', 'js', 'json', 'jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'bmp', 'tiff', 'mp3', 'ogg', 'wav', 'mp4', 'webm' );
+		$disposition = in_array( $file->file_type, $inline_types ) ? 'inline' : 'attachment';
+
+		header( "Content-Type: $mime_type" );
+		header( "Content-Disposition: $disposition; filename=\"$file_name\"" );
+		header( "Content-Length: " . filesize( $absolute_path ) );
+
+		nocache_headers();
+
+		readfile( $absolute_path );
+		exit;
 	}
 
 	private function get_mime_type( $file_type ) {

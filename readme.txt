@@ -28,7 +28,10 @@ Reach out to me at riley@sandb.org
 
 == Changelog ==
 
-= 0.11.9 =
+= 0.12.1 =
+* Replace the file download URL with a query arg temporarily to fix the file download issue on nginx servers
+
+= 0.12.0 =
 * Refactor most of the codebase to follow Wordpress Coding Standards
 
 = 0.11.8 =

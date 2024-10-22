@@ -74,7 +74,7 @@ class FVM_Shortcode {
 	private function file( $files, $atts ) {
 		if ( ! empty( $files ) ) {
 			if ( $atts['tpl'] === 'urlonly' || $atts['tpl'] === 'url' ) {
-				return esc_url( $files[0]->file_url );
+				return esc_url( add_query_arg( 'file', $files[0]->file_name, home_url() ) );
 			} elseif ( $atts['tpl'] === 'table' ) {
 				return $this->table( $files, $atts );
 			} else {
@@ -82,7 +82,7 @@ class FVM_Shortcode {
 					$file = $files[0];
 					ob_start();
 					?>
-					<a href="<?php echo esc_url( $file->file_url ); ?>" target="_blank">
+					<a href="<?php echo esc_url( add_query_arg( 'file', $file->file_name, home_url() ) ); ?>" target="_blank">
 						<?php echo esc_html( ! empty( $file->file_display_name ) ? $file->file_display_name : $file->file_name ); ?>
 					</a>
 					<?php if ( $file->file_type ) : ?>
@@ -160,7 +160,8 @@ class FVM_Shortcode {
 					}
 					?>
 					<span class="dashicons <?php echo esc_attr( $dashicon_class ); ?>"></span>
-					<a href="<?php echo esc_url( $file->file_url ); ?>" target="_blank" rel="noopener noreferrer">
+					<a href="<?php echo esc_url( add_query_arg( 'file', $file->file_name, home_url() ) ); ?>" target="_blank"
+						rel="noopener noreferrer">
 						<?php echo esc_html( ! empty( $file->file_display_name ) ? $file->file_display_name : $file->file_name ); ?>
 					</a>
 					<?php if ( $file->file_type ) : ?>
@@ -224,7 +225,8 @@ class FVM_Shortcode {
 							<span class="fvm-item-size">(<?php echo esc_html( size_format( $file->file_size ) ); ?>)</span>
 						</div>
 					</div>
-					<a class="fvm-grid-item-btn" href="<?php echo esc_url( $file->file_url ); ?>" target="_blank"
+					<a class="fvm-grid-item-btn"
+						href="<?php echo esc_url( add_query_arg( 'file', $file->file_name, home_url() ) ); ?>" target="_blank"
 						rel="noopener noreferrer">View/Download</a>
 				</div>
 			<?php endforeach; ?>
@@ -289,7 +291,8 @@ class FVM_Shortcode {
 			<tbody>
 				<?php foreach ( $files as $file ) : ?>
 					<tr>
-						<td><a href="<?php echo esc_url( $file->file_url ); ?>" target="_blank"
+						<td><a href="<?php echo esc_url( add_query_arg( 'file', $file->file_name, home_url() ) ); ?>"
+								target="_blank"
 								rel="noopener noreferrer"><?php echo esc_html( ! empty( $file->file_display_name ) ? $file->file_display_name : $file->file_name ); ?></a>
 						</td>
 						<?php if ( $has_description ) : ?>
@@ -462,7 +465,7 @@ class FVM_Shortcode {
 			</li>',
 			$file->id,
 			$level,
-			esc_url( $file->file_url ),
+			esc_url( add_query_arg( 'file', $file->file_name, home_url() ) ),
 			esc_html( $file_name ),
 			$file->file_type ? '<span>' . esc_html( $file->file_type ) . '</span>' : '',
 			esc_html( size_format( $file->file_size ) )
