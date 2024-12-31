@@ -188,6 +188,26 @@ class FVM_File_Manager {
 				$file_id = $this->wpdb->insert_id;
 			}
 
+			// Log the file upload
+			$changes = [ 
+				sprintf( '%s', $file_name ),
+				sprintf( 'Size: %s', size_format( $file_size ) ),
+				sprintf( 'Type: %s', strtoupper( $file_type ) ),
+			];
+
+			apply_filters(
+				'simple_history_log',
+				'Uploaded new file (ID: {file_id}): ' . implode( '. ', $changes ),
+				[ 
+					'file_id' => $file_id,
+					'file_name' => $file_name,
+					'file_size' => $file_size,
+					'file_type' => $file_type,
+					'changes' => $changes,
+				],
+				'info'
+			);
+
 			return $file_id;
 		}
 
@@ -336,11 +356,45 @@ class FVM_File_Manager {
 			return false;
 		}
 
-		// Verify the update
+		// Get the updated file data
 		$updated_file = $this->wpdb->get_row( $this->wpdb->prepare( "SELECT * FROM $this->file_table_name WHERE id = %d", $file_id ) );
 
 		// Update file categories
 		$this->update_file_categories( $file_id, $file_categories );
+
+		// Track specific changes
+		$changes = [];
+		if ( ! empty( $new_file['tmp_name'] ) ) {
+			$changes[] = 'Replaced file with {file_name}';
+			$changes[] = sprintf( 'Size changed to %s', size_format( $update_data['file_size'] ) );
+		}
+		if ( ! empty( $file_display_name ) && $file_display_name !== $existing_file['file_display_name'] ) {
+			$changes[] = sprintf( 'Display name changed from "%s" to "%s"', $existing_file['file_display_name'], $file_display_name );
+		}
+		if ( isset( $update_data['file_description'] ) && $update_data['file_description'] !== $existing_file['file_description'] ) {
+			$changes[] = 'Description updated';
+		}
+		if ( $file_offline != $existing_file['file_offline'] ) {
+			$changes[] = $file_offline ? 'Set to offline' : 'Set to online';
+		}
+		// if ( ! empty( $file_categories ) ) {
+		// 	$changes[] = 'Categories updated';
+		// }
+
+		// Log changes if any were made
+		if ( ! empty( $changes ) ) {
+			apply_filters(
+				'simple_history_log',
+				'Updated file: {old_file_name} (ID: {file_id}): ' . implode( '. ', $changes ),
+				[ 
+					'file_id' => $file_id,
+					'file_name' => $updated_file->file_name,
+					'old_file_name' => $existing_file['file_name'],
+					'changes' => $changes,
+				],
+				'info'
+			);
+		}
 
 		error_log( "Updated file data: " . print_r( $updated_file, true ) );
 
@@ -424,7 +478,32 @@ class FVM_File_Manager {
 			if ( file_exists( $absolute_path ) ) {
 				unlink( $absolute_path );
 			}
-			return $this->wpdb->delete( $this->file_table_name, [ 'id' => $file_id ], [ '%d' ] );
+
+			$deleted = $this->wpdb->delete( $this->file_table_name, [ 'id' => $file_id ], [ '%d' ] );
+
+			if ( $deleted ) {
+				// Log the file deletion
+				$changes = [ 
+					sprintf( '%s', $file->file_name ),
+					sprintf( 'Size: %s', size_format( $file->file_size ) ),
+					sprintf( 'Type: %s', strtoupper( $file->file_type ) ),
+				];
+
+				apply_filters(
+					'simple_history_log',
+					'Deleted file (ID: {file_id}): ' . implode( '. ', $changes ),
+					[ 
+						'file_id' => $file_id,
+						'file_name' => $file->file_name,
+						'file_size' => $file->file_size,
+						'file_type' => $file->file_type,
+						'changes' => $changes,
+					],
+					'info'
+				);
+
+				return true;
+			}
 		}
 		return false;
 	}
