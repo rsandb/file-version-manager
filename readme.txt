@@ -28,6 +28,9 @@ Reach out to me at riley@sandb.org
 
 == Changelog ==
 
+= 0.12.2 =
+* Added Simple History logging support for file uploads, deletions, and updates
+
 = 0.12.1 =
 * Replace the file download URL with a query arg temporarily to fix the file download issue on nginx servers
 
