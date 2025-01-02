@@ -28,6 +28,9 @@ Reach out to me at riley@sandb.org
 
 == Changelog ==
 
+= 0.12.3 =
+* Fix a bug where the inital render of the toggle shortcode was showing toggle content
+
 = 0.12.2 =
 * Added Simple History logging support for file uploads, deletions, and updates
 
