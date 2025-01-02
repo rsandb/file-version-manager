@@ -341,7 +341,7 @@ class FVM_Shortcode {
 			<h2 class="fvm-toggle-title"><?php echo esc_html( $title ); ?></h2>
 		<?php endif; ?>
 		<ul id="fvm-toggle-<?php echo esc_attr( $category_id ); ?>" class="fvm-toggle-container">
-			<?php echo wp_kses_post( $this->render_category_toggle( $categories, $direct_files, 0, $category_id ) ); ?>
+			<?php echo $this->render_category_toggle( $categories, $direct_files, 0, $category_id ); ?>
 		</ul>
 
 		<script>
@@ -438,7 +438,7 @@ class FVM_Shortcode {
 				<span class="fvm-toggle-category-title" aria-expanded="false">
 					+ %3$s
 				</span>
-				<ul class="fvm-toggle-content" style="display: none;" aria-hidden="true">
+				<ul class="fvm-toggle-content" style="display: none !important;" aria-hidden="true">
 					%4$s
 					%5$s
 				</ul>
