@@ -98,15 +98,25 @@ class FVM_Category_Manager {
 		$orderby = in_array( $orderby, $allowed_orderby ) ? $orderby : 'cat_name';
 		$order = in_array( strtoupper( $order ), $allowed_order ) ? strtoupper( $order ) : 'ASC';
 
-		$query = "SELECT c.*, COUNT(DISTINCT r.file_id) as total_files
+		$query = "SELECT DISTINCT c.*, COUNT(DISTINCT r.file_id) as total_files
                   FROM {$this->category_table_name} c 
-                  LEFT JOIN {$this->rel_table_name} r ON c.id = r.category_id
-                  WHERE 1=1";
+                  LEFT JOIN {$this->rel_table_name} r ON c.id = r.category_id";
+
+		// If there's a search term, join with categories table twice to search through both parent and child categories
+		if ( ! empty( $search ) ) {
+			$query .= " LEFT JOIN {$this->category_table_name} p ON c.id = p.cat_parent_id
+					   LEFT JOIN {$this->category_table_name} ch ON ch.cat_parent_id = c.id";
+		}
+
+		$query .= " WHERE 1=1";
 
 		$params = [];
 		if ( ! empty( $search ) ) {
-			$query .= " AND c.cat_name LIKE %s";
-			$params[] = '%' . $this->wpdb->esc_like( $search ) . '%';
+			$search_term = '%' . $this->wpdb->esc_like( $search ) . '%';
+			$query .= " AND (c.cat_name LIKE %s OR p.cat_name LIKE %s OR ch.cat_name LIKE %s)";
+			$params[] = $search_term;
+			$params[] = $search_term;
+			$params[] = $search_term;
 		}
 
 		$query .= " GROUP BY c.id ORDER BY {$orderby} {$order}";
