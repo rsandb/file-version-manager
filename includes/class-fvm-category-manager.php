@@ -98,6 +98,9 @@ class FVM_Category_Manager {
 		$orderby = in_array( $orderby, $allowed_orderby ) ? $orderby : 'cat_name';
 		$order = in_array( strtoupper( $order ), $allowed_order ) ? strtoupper( $order ) : 'ASC';
 
+		// Escape identifiers
+		$orderby = esc_sql( $orderby );
+
 		$query = "SELECT DISTINCT c.*, COUNT(DISTINCT r.file_id) as total_files
                   FROM {$this->category_table_name} c 
                   LEFT JOIN {$this->rel_table_name} r ON c.id = r.category_id";

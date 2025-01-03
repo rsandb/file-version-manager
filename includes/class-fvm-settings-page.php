@@ -225,10 +225,10 @@ class FVM_Settings_Page {
 							This process will add any missing columns without losing existing data.
 						</p>
 					</div>
-					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+					<form method="post" action="<?php // echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 						<input type="hidden" name="action" value="fvm_upgrade_database">
-						<?php wp_nonce_field( 'fvm_upgrade_database', 'fvm_upgrade_database_nonce' ); ?>
-						<?php submit_button( 'Upgrade Database', 'primary', 'upgrade_database' ); ?>
+						<?php // wp_nonce_field( 'fvm_upgrade_database', 'fvm_upgrade_database_nonce' ); ?>
+						<?php submit_button( 'Upgrade Database', 'disabled', 'upgrade_database' ); ?>
 					</form>
 				</div>
 			</div>
