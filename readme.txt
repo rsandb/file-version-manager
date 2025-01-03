@@ -28,6 +28,9 @@ Reach out to me at riley@sandb.org
 
 == Changelog ==
 
+= 0.13.0 =
+* List categories hierarchically in the file edit modal
+
 = 0.12.4 =
 * Fix child categories not appearing in the search results on the category admin page
 
