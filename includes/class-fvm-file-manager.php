@@ -520,12 +520,12 @@ class FVM_File_Manager {
 			return false;
 		}
 
-		// Get categories for the file
+		// Get categories for the file with parent information
 		$categories = $this->wpdb->get_results( $this->wpdb->prepare(
-			"SELECT c.id, c.cat_name, IF(r.file_id IS NOT NULL, 1, 0) as checked
+			"SELECT c.id, c.cat_name, c.cat_parent_id, IF(r.file_id IS NOT NULL, 1, 0) as checked
 			 FROM {$this->cat_table_name} c
 			 LEFT JOIN {$this->rel_table_name} r ON c.id = r.category_id AND r.file_id = %d
-			 ORDER BY c.cat_name ASC",
+			 ORDER BY c.cat_parent_id ASC, c.cat_name ASC",
 			$file_id
 		) );
 
@@ -534,6 +534,7 @@ class FVM_File_Manager {
 			return [ 
 				'id' => $category->id,
 				'name' => $category->cat_name,
+				'parent_id' => $category->cat_parent_id,
 				'checked' => $category->checked == 1
 			];
 		}, $categories );

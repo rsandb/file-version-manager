@@ -445,17 +445,44 @@ class FVM_File_Page {
 									// Populate categories
 									const categoriesContainer = document.getElementById('file_categories');
 									categoriesContainer.innerHTML = '';
-									file.categories.forEach(category => {
-										const label = document.createElement('label');
-										const checkbox = document.createElement('input');
-										checkbox.type = 'checkbox';
-										checkbox.name = 'file_categories[]';
-										checkbox.value = category.id;
-										checkbox.checked = category.checked;
-										label.appendChild(checkbox);
-										label.appendChild(document.createTextNode(` ${category.name}`));
-										categoriesContainer.appendChild(label);
-									});
+
+									// Build category tree
+									const buildCategoryTree = (categories, parentId = 0) => {
+										return categories
+											.filter(category => category.parent_id == parentId)
+											.map(category => ({
+												...category,
+												children: buildCategoryTree(categories, category.id)
+											}));
+									};
+
+									// Render category tree
+									const renderCategoryTree = (categories, depth = 0) => {
+										categories.forEach(category => {
+											const label = document.createElement('label');
+											label.style.paddingLeft = `${depth * 10}px`;
+											label.style.display = 'block';
+											label.style.marginBottom = '5px';
+
+											const checkbox = document.createElement('input');
+											checkbox.type = 'checkbox';
+											checkbox.name = 'file_categories[]';
+											checkbox.value = category.id;
+											checkbox.checked = category.checked;
+
+											label.appendChild(checkbox);
+											label.appendChild(document.createTextNode(` ${category.name}`));
+											categoriesContainer.appendChild(label);
+
+											if (category.children && category.children.length > 0) {
+												renderCategoryTree(category.children, depth + 1);
+											}
+										});
+									};
+
+									// Build and render the category tree
+									const categoryTree = buildCategoryTree(file.categories);
+									renderCategoryTree(categoryTree);
 								} else {
 									console.error('Failed to fetch file data');
 								}
