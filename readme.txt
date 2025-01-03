@@ -28,6 +28,9 @@ Reach out to me at riley@sandb.org
 
 == Changelog ==
 
+= 0.12.4 =
+* Fix child categories not appearing in the search results on the category admin page
+
 = 0.12.3 =
 * Fix a bug where the inital render of the toggle shortcode was showing toggle content
 

@@ -2,7 +2,7 @@
 /*
 Plugin Name: File Version Manager
 Description: Conveniently upload and update files site-wide.
-Version: 0.12.3
+Version: 0.12.4
 Author: Riley Sandborg
 Author URI: https://rileysandb.org/
 License: GPLv2 or later
@@ -20,7 +20,7 @@ if ( ! defined( 'WPINC' ) ) {
 }
 
 // Define constants
-define( 'FVM_VERSION', '0.12.3' );
+define( 'FVM_VERSION', '0.4' );
 define( 'FILE_TABLE_NAME', 'fvm_files' );
 define( 'CAT_TABLE_NAME', 'fvm_categories' );
 define( 'REL_TABLE_NAME', 'fvm_relationships' );
