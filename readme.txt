@@ -28,6 +28,10 @@ Reach out to me at riley@sandb.org
 
 == Changelog ==
 
+= 0.13.1 =
+* Update the appearance of the shortcode toggle template
+* Remove the file version number from the file table
+
 = 0.13.0 =
 * List categories hierarchically in the file edit modal
 
