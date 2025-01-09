@@ -356,7 +356,6 @@ class FVM_Shortcode {
 						content.setAttribute('aria-hidden', isExpanded);
 						content.classList.toggle('active');
 						content.style.display = isExpanded ? 'none' : 'block';
-						toggle.textContent = toggle.textContent.replace(/^[+-]/, isExpanded ? '+' : '-');
 					}
 				});
 			});
@@ -433,21 +432,32 @@ class FVM_Shortcode {
 			$files_output .= $this->render_file_item( $file, $level + 1 );
 		}
 
+		$icons = '<div class="fvm-toggle-icon-wrapper">' .
+			'<svg class="fvm-toggle-icon plus" width="20px" height="20px" stroke-width="1.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" color="#000000"><path d="M6 12H12M18 12H12M12 12V6M12 12V18" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>' .
+			'<svg class="fvm-toggle-icon minus" width="20px" height="20px" stroke-width="1.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" color="#000000"><path d="M6 12H18" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>' .
+			'</div>';
+
+		// Check if there are no files and no subcategories
+		$content = $subcategories . $files_output;
+		if ( empty( $content ) ) {
+			$content = '<li class="fvm-toggle-file"><span>No files available.</span></li>';
+		}
+
 		return sprintf(
 			'<li id="fvm-category-%1$d" class="fvm-toggle-category" data-level="%2$d">
 				<span class="fvm-toggle-category-title" aria-expanded="false">
-					+ %3$s
+					%6$s %3$s
 				</span>
 				<ul class="fvm-toggle-content" style="display: none !important;" aria-hidden="true">
 					%4$s
-					%5$s
 				</ul>
 			</li>',
 			$category->id,
 			$level,
 			esc_html( $category->cat_name ),
-			$subcategories,
-			$files_output
+			$content,
+			$files_output,
+			$icons
 		);
 	}
 

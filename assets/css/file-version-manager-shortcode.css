@@ -132,7 +132,6 @@ ul.fvm-toggle-container
 
 .fvm-toggle-category {
     background-color: #d5d5d5;
-    cursor: pointer;
 }
 
 .fvm-toggle-subcategory li {
@@ -143,8 +142,8 @@ ul.fvm-toggle-container
 }
 
 ul.fvm-toggle-container li > span {
-    padding: 5px 10px;
     display: block;
+    padding: 5px 10px 5px 10px;
 }
 
 .fvm-toggle-content {
@@ -175,4 +174,45 @@ ul.fvm-toggle-container a:hover {
     border-radius: 4px;
     text-transform: uppercase;
     font-size: 12px;
+}
+
+.fvm-toggle-category-title {
+    display: flex !important;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+
+.fvm-toggle-icon-wrapper {
+    position: relative;
+    width: 20px;
+    height: 20px;
+}
+
+.fvm-toggle-icon {
+    transition: opacity 0.2s, transform 0.2s;
+    position: absolute;
+    opacity: 0;
+    left: 0;
+    top: 0;
+}
+
+.fvm-toggle-icon.plus {
+    opacity: 1;
+    transform: rotate(0deg);
+}
+
+.fvm-toggle-icon.minus {
+    opacity: 0;
+    transform: rotate(-180deg);
+}
+
+.fvm-toggle-category-title[aria-expanded="true"] .plus {
+    opacity: 0;
+    transform: rotate(180deg);
+}
+
+.fvm-toggle-category-title[aria-expanded="true"] .minus {
+    opacity: 1;
+    transform: rotate(0deg);
 }

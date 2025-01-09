@@ -164,7 +164,6 @@ class FVM_File_List_Table extends \WP_List_Table {
 			'file_name' => 'File Name',
 			'file_type' => 'File Type',
 			'file_size' => 'Size',
-			'file_version' => 'Version',
 			'shortcode' => 'Shortcode',
 			'date_modified' => 'Date Modified',
 		];
@@ -183,7 +182,6 @@ class FVM_File_List_Table extends \WP_List_Table {
 		switch ( $column_name ) {
 			case 'file_name':
 			case 'file_type':
-			case 'file_version':
 				return esc_html( $item[ $column_name ] ?? '' );
 			case 'date_modified':
 				return $item[ $column_name ] ? esc_html( date( 'Y/m/d \a\t g:i a', strtotime( $item[ $column_name ] ) ) ) : '';
