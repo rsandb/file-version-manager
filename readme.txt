@@ -28,6 +28,9 @@ Reach out to me at riley@sandb.org
 
 == Changelog ==
 
+= 0.13.4 =
+* Updated file manager class
+
 = 0.13.3 =
 * Added a new option to disable file scanning
 
