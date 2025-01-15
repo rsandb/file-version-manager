@@ -9,9 +9,9 @@ class FVM_Category_Manager {
 
 	public function __construct( \wpdb $wpdb ) {
 		$this->wpdb = $wpdb;
-		$this->category_table_name = $wpdb->prefix . CAT_TABLE_NAME;
-		$this->file_table_name = $wpdb->prefix . FILE_TABLE_NAME;
-		$this->rel_table_name = $wpdb->prefix . REL_TABLE_NAME;
+		$this->category_table_name = esc_sql( $wpdb->prefix . CAT_TABLE_NAME );
+		$this->file_table_name = esc_sql( $wpdb->prefix . FILE_TABLE_NAME );
+		$this->rel_table_name = esc_sql( $wpdb->prefix . REL_TABLE_NAME );
 	}
 
 	/**

@@ -25,9 +25,9 @@ class FVM_Category_List_Table extends \WP_List_Table {
 		global $wpdb;
 		$this->wpdb = $wpdb;
 		$this->category_manager = $category_manager;
-		$this->category_table_name = $wpdb->prefix . CAT_TABLE_NAME;
-		$this->file_table_name = $wpdb->prefix . FILE_TABLE_NAME;
-		$this->rel_table_name = $wpdb->prefix . REL_TABLE_NAME;
+		$this->category_table_name = esc_sql( $wpdb->prefix . CAT_TABLE_NAME );
+		$this->file_table_name = esc_sql( $wpdb->prefix . FILE_TABLE_NAME );
+		$this->rel_table_name = esc_sql( $wpdb->prefix . REL_TABLE_NAME );
 	}
 
 	public function prepare_items() {

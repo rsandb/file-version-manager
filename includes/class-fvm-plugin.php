@@ -35,7 +35,7 @@ class FVM_Plugin {
 		add_action( 'plugins_loaded', [ $this, 'setup' ] );
 		add_action( 'wp', [ $this, 'handle_file_request' ] );
 		add_action( 'wp', [ $this, 'handle_legacy_download_url' ] );
-		add_action( 'admin_notices', [ $this, 'display_server_notice' ] );
+		// add_action( 'admin_notices', [ $this, 'display_server_notice' ] );
 		add_action( 'admin_notices', [ $this, 'display_upgrade_notice' ] );
 		add_action( 'admin_post_fvm_upgrade_database', [ $this, 'handle_database_upgrade' ] );
 	}
@@ -50,18 +50,18 @@ class FVM_Plugin {
 		add_filter( 'admin_footer_text', [ $this, 'custom_admin_footer_text' ], 9999 );
 	}
 
-	public function display_server_notice() {
-		if ( is_nginx() && ! get_option( 'fvm_nginx_rewrite_rules' ) ) {
-			$class = 'notice notice-error';
-			$settings_url = admin_url( 'admin.php?page=fvm_settings#nginx' );
-			$message = sprintf(
-				/* translators: %s: URL to plugin settings */
-				__( 'Your website is running on an Nginx server. Additional setup is required for File Version Manager to work correctly. Please check the <a href="%s">plugin settings</a> for Nginx configuration instructions.', 'file-version-manager' ),
-				esc_url( $settings_url )
-			);
-			printf( '<div class="%1$s"><p>%2$s</p></div>', esc_attr( $class ), wp_kses_post( $message ) );
-		}
-	}
+	// public function display_server_notice() {
+	// 	if ( is_nginx() && ! get_option( 'fvm_nginx_rewrite_rules' ) ) {
+	// 		$class = 'notice notice-error';
+	// 		$settings_url = admin_url( 'admin.php?page=fvm_settings#nginx' );
+	// 		$message = sprintf(
+	// 			/* translators: %s: URL to plugin settings */
+	// 			__( 'Your website is running on an Nginx server. Additional setup is required for File Version Manager to work correctly. Please check the <a href="%s">plugin settings</a> for Nginx configuration instructions.', 'file-version-manager' ),
+	// 			esc_url( $settings_url )
+	// 		);
+	// 		printf( '<div class="%1$s"><p>%2$s</p></div>', esc_attr( $class ), wp_kses_post( $message ) );
+	// 	}
+	// }
 
 	public function display_upgrade_notice() {
 		if ( isset( $_GET['page'] ) && $_GET['page'] === 'fvm_settings' && isset( $_GET['upgraded'] ) ) {
