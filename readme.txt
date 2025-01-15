@@ -28,6 +28,9 @@ Reach out to me at riley@sandb.org
 
 == Changelog ==
 
+= 0.13.2 =
+* Updated table name variables to use esc_sql()
+
 = 0.13.1 =
 * Update the appearance of the shortcode toggle template
 * Remove the file version number from the file table
