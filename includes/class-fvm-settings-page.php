@@ -42,6 +42,7 @@ class FVM_Settings_Page {
 		register_setting( 'fvm_settings', 'fvm_debug_logs' );
 		register_setting( 'fvm_settings', 'fvm_auto_increment_version' );
 		register_setting( 'fvm_settings', 'fvm_nginx_rewrite_rules' );
+		register_setting( 'fvm_settings', 'fvm_disable_file_scan' );
 	}
 
 	public function set_default_options() {
@@ -53,6 +54,9 @@ class FVM_Settings_Page {
 		}
 		if ( get_option( 'fvm_nginx_rewrite_rules' ) === false ) {
 			update_option( 'fvm_nginx_rewrite_rules', 0 );
+		}
+		if ( get_option( 'fvm_disable_file_scan' ) === false ) {
+			update_option( 'fvm_disable_file_scan', 0 );
 		}
 	}
 
@@ -163,6 +167,16 @@ class FVM_Settings_Page {
 							<span>Enable Auto-Increment Version</span>
 						</div>
 						<small class="description">Enable auto-increment version when files are replaced.</small>
+					</div>
+
+					<div class="fvm_field-group">
+						<h3>File Scanning</h3>
+						<div class="fvm_input-group">
+							<input type="checkbox" name="fvm_disable_file_scan" value="1" <?php checked( get_option( 'fvm_disable_file_scan' ), 1 ); ?> />
+							<span>Disable automatic file scanning</span>
+						</div>
+						<small class="description">Disable automatic scanning of the upload directory for new or deleted files.
+							This may improve performance on sites with many files.</small>
 					</div>
 
 				</div>

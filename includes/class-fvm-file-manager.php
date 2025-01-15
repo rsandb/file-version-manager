@@ -62,6 +62,11 @@ class FVM_File_Manager {
 	 * @return void
 	 */
 	public function scan_files() {
+		// Check if file scanning is disabled
+		if ( get_option( 'fvm_disable_file_scan', 0 ) ) {
+			return;
+		}
+
 		$db_files = $this->wpdb->get_results( "SELECT id, file_path FROM {$this->file_table_name}", ARRAY_A );
 		$db_file_paths = array_column( $db_files, 'file_path', 'id' );
 

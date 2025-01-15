@@ -28,6 +28,9 @@ Reach out to me at riley@sandb.org
 
 == Changelog ==
 
+= 0.13.3 =
+* Added a new option to disable file scanning
+
 = 0.13.2 =
 * Updated table name variables to use esc_sql()
 
