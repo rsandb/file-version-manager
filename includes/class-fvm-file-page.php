@@ -695,25 +695,26 @@ class FVM_File_Page {
 	 */
 	public function handle_bulk_actions() {
 		$this->setup_list_table();
-
 		$action = $this->wp_list_table->current_action();
 
 		if ( $action && in_array( $action, [ 'delete', 'bulk-delete' ] ) ) {
+			// Verify bulk action nonce
 			check_admin_referer( 'bulk-files' );
 
 			$file_ids = isset( $_REQUEST['file'] ) ? (array) $_REQUEST['file'] : [];
+			$file_ids = array_map( 'absint', $file_ids );
 
 			if ( ! empty( $file_ids ) ) {
 				$deleted_count = 0;
 				foreach ( $file_ids as $file_id ) {
-					if ( $this->file_manager->delete_file( intval( $file_id ) ) ) {
+					// Pass true to indicate this is a bulk action
+					if ( $this->file_manager->delete_file( $file_id, true ) ) {
 						$deleted_count++;
 					}
 				}
 
 				if ( $deleted_count > 0 ) {
 					$message = sprintf(
-						/* translators: %s: number of files deleted */
 						_n( '%s file deleted successfully.', '%s files deleted successfully.', $deleted_count, 'file-version-manager' ),
 						number_format_i18n( $deleted_count )
 					);

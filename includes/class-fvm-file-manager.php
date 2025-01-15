@@ -24,7 +24,6 @@ class FVM_File_Manager {
 	public function init() {
 		add_action( 'load-toplevel_page_fvm_files', [ $this, 'scan_files' ] );
 		add_action( 'admin_post_update_file', [ $this, 'handle_file_update' ] );
-		add_action( 'admin_post_nopriv_update_file', [ $this, 'handle_file_update' ] );
 	}
 
 	/**
@@ -62,7 +61,10 @@ class FVM_File_Manager {
 	 * @return void
 	 */
 	public function scan_files() {
-		// Check if file scanning is disabled
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( 'Unauthorized access' );
+		}
+
 		if ( get_option( 'fvm_disable_file_scan', 0 ) ) {
 			return;
 		}
@@ -134,7 +136,6 @@ class FVM_File_Manager {
 		$files = [];
 		$absolute_dir = ABSPATH . ltrim( $dir, '/' );
 		if ( ! is_dir( $absolute_dir ) ) {
-			error_log( "Directory does not exist: " . $absolute_dir );
 			return $files;
 		}
 		$iterator = new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( $absolute_dir ) );
@@ -155,6 +156,10 @@ class FVM_File_Manager {
 	 * @return int|false
 	 */
 	public function upload_file( $file, $file_id = null, $file_version = '1.0' ) {
+		if ( ! current_user_can( 'upload_files' ) ) {
+			wp_die( 'Unauthorized access' );
+		}
+
 		add_filter( 'upload_dir', [ $this, 'custom_upload_dir' ] );
 		$movefile = wp_handle_upload( $file, [ 'test_form' => false ] );
 		remove_filter( 'upload_dir', [ $this, 'custom_upload_dir' ] );
@@ -256,7 +261,6 @@ class FVM_File_Manager {
 		$existing_file = $this->wpdb->get_row( $this->wpdb->prepare( "SELECT * FROM $this->file_table_name WHERE id = %d", $file_id ), ARRAY_A );
 
 		if ( ! $existing_file ) {
-			error_log( "File not found for ID: $file_id" );
 			return false;
 		}
 
@@ -290,7 +294,6 @@ class FVM_File_Manager {
 
 		if ( isset( $update_data['file_version'] ) ) {
 			$update_format[] = '%s';
-			error_log( "Updating version to: " . $update_data['file_version'] );
 		}
 
 		// Handle file upload if a new file is provided
@@ -304,15 +307,11 @@ class FVM_File_Manager {
 			// Delete the old file
 			$old_file_path = ABSPATH . $existing_file['file_path'];
 
-			if ( file_exists( $old_file_path ) ) {
-				if ( unlink( $old_file_path ) ) {
-					error_log( "Old file deleted: " . $old_file_path );
-				} else {
-					error_log( "Failed to delete old file: " . $old_file_path );
-				}
-			} else {
-				error_log( "Old file not found: " . $old_file_path );
-			}
+			// if ( file_exists( $old_file_path ) ) {
+			// 	if ( unlink( $old_file_path ) ) {
+			// 	} else {
+			// 	}
+			// }
 
 			// Upload the new file to the custom directory
 			add_filter( 'upload_dir', [ $this, 'custom_upload_dir' ] );
@@ -326,9 +325,6 @@ class FVM_File_Manager {
 				$file_type = wp_check_filetype( ABSPATH . $new_file_path )['ext'];
 				$file_size = filesize( ABSPATH . $new_file_path );
 
-				error_log( "New file path: " . $new_file_path );
-				error_log( "File type before update: " . $file_type );
-
 				$update_data['file_name'] = $new_file_name;
 				$update_data['file_path'] = $new_file_path;
 				$update_data['file_url'] = $file_url;
@@ -337,16 +333,12 @@ class FVM_File_Manager {
 
 				$update_format = array_merge( $update_format, array( '%s', '%s', '%s', '%s', '%d' ) );
 			} else {
-				error_log( "File move failed: " . print_r( $movefile, true ) );
 				return false;
 			}
 		}
 
 		$update_data['date_modified'] = current_time( 'mysql' );
 		$update_format[] = '%s';
-
-		error_log( "Update data: " . print_r( $update_data, true ) );
-		error_log( "Update format: " . print_r( $update_format, true ) );
 
 		$result = $this->wpdb->update(
 			$this->file_table_name,
@@ -357,7 +349,6 @@ class FVM_File_Manager {
 		);
 
 		if ( $result === false ) {
-			error_log( "Database update failed: " . $this->wpdb->last_error );
 			return false;
 		}
 
@@ -401,8 +392,6 @@ class FVM_File_Manager {
 			);
 		}
 
-		error_log( "Updated file data: " . print_r( $updated_file, true ) );
-
 		return true;
 	}
 
@@ -442,9 +431,9 @@ class FVM_File_Manager {
 			array( '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s' )
 		);
 
-		if ( $result === false ) {
-			error_log( 'Database insertion failed: ' . $this->wpdb->last_error );
-		}
+		// if ( $result === false ) {
+		// 	error_log( 'Database insertion failed: ' . $this->wpdb->last_error );
+		// }
 	}
 
 	/**
@@ -476,40 +465,75 @@ class FVM_File_Manager {
 	 * @param int $file_id
 	 * @return bool
 	 */
-	public function delete_file( $file_id ) {
+	public function delete_file( $file_id, $bulk_action = false ) {
+		// Verify user capabilities
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( 'Unauthorized access' );
+		}
+
+		// Different nonce verification for bulk vs single deletion
+		if ( ! $bulk_action && isset( $_REQUEST['_wpnonce'] ) ) {
+			check_admin_referer( 'delete_file_' . $file_id );
+		}
+
+		// Sanitize and validate file ID
+		$file_id = absint( $file_id );
+		if ( ! $file_id ) {
+			return false;
+		}
+
+		// Get file info before deletion for logging
 		$file = $this->get_file( $file_id );
-		if ( $file ) {
-			$absolute_path = ABSPATH . $file->file_path;
-			if ( file_exists( $absolute_path ) ) {
-				unlink( $absolute_path );
-			}
+		if ( ! $file ) {
+			return false;
+		}
 
-			$deleted = $this->wpdb->delete( $this->file_table_name, [ 'id' => $file_id ], [ '%d' ] );
+		// Verify file is within allowed directory
+		$absolute_path = ABSPATH . $file->file_path;
+		$upload_dir = ABSPATH . $this->upload_dir;
+		if ( strpos( realpath( $absolute_path ), realpath( $upload_dir ) ) !== 0 ) {
+			return false;
+		}
 
-			if ( $deleted ) {
-				// Log the file deletion
-				$changes = [ 
-					sprintf( '%s', $file->file_name ),
-					sprintf( 'Size: %s', size_format( $file->file_size ) ),
-					sprintf( 'Type: %s', strtoupper( $file->file_type ) ),
-				];
-
-				apply_filters(
-					'simple_history_log',
-					'Deleted file (ID: {file_id}): ' . implode( '. ', $changes ),
-					[ 
-						'file_id' => $file_id,
-						'file_name' => $file->file_name,
-						'file_size' => $file->file_size,
-						'file_type' => $file->file_type,
-						'changes' => $changes,
-					],
-					'info'
-				);
-
-				return true;
+		// Delete physical file
+		if ( file_exists( $absolute_path ) ) {
+			if ( ! unlink( $absolute_path ) ) {
+				return false;
 			}
 		}
+
+		// Delete from database
+		$deleted = $this->wpdb->delete(
+			$this->file_table_name,
+			[ 'id' => $file_id ],
+			[ '%d' ]
+		);
+
+		if ( $deleted ) {
+			// Clean up category relationships
+			$this->wpdb->delete(
+				$this->rel_table_name,
+				[ 'file_id' => $file_id ],
+				[ '%d' ]
+			);
+
+			// Log the deletion
+			apply_filters(
+				'simple_history_log',
+				'Deleted file (ID: {file_id}): {file_name}',
+				[ 
+					'file_id' => $file_id,
+					'file_name' => $file->file_name,
+					'file_size' => $file->file_size,
+					'file_type' => $file->file_type,
+					'bulk_action' => $bulk_action,
+				],
+				'info'
+			);
+
+			return true;
+		}
+
 		return false;
 	}
 
