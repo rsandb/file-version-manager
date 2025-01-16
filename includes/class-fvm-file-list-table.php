@@ -1,7 +1,7 @@
 <?php
 namespace FVM\FileVersionManager;
 
-#todo: category query string in URL returns all files in that category
+#todo: add a category filter to the file list table
 
 if ( ! class_exists( 'WP_List_Table' ) ) {
 	require_once( ABSPATH . 'wp-admin/includes/class-wp-list-table.php' );

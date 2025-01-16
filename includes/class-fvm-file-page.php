@@ -2,8 +2,6 @@
 
 namespace FVM\FileVersionManager;
 
-#todo: instead of generating edit forms for each file, generate a single edit form that can be used for all files
-
 class FVM_File_Page {
 	private $file_manager;
 	private $wp_list_table;

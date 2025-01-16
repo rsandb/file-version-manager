@@ -1,6 +1,5 @@
 <?php
 
-#todo: fix searching to show child categories
 #todo: clicking on count will redirect to the files page showing all files in that category
 
 namespace FVM\FileVersionManager;
