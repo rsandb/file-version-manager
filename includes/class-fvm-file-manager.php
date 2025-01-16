@@ -33,8 +33,8 @@ class FVM_File_Manager {
 	 */
 	private function set_upload_dir() {
 		$upload_dir = wp_upload_dir();
-		$custom_folder = 'filebase';
-		$this->upload_dir = 'wp-content/uploads/' . trim( $custom_folder, '/' );
+		$this->custom_folder = sanitize_file_name( $this->custom_folder );
+		$this->upload_dir = str_replace( ABSPATH, '', trailingslashit( $upload_dir['basedir'] ) . $this->custom_folder );
 		wp_mkdir_p( ABSPATH . $this->upload_dir );
 	}
 
@@ -257,6 +257,9 @@ class FVM_File_Manager {
 	 * @return bool
 	 */
 	public function update_file( $file_id, $new_file, $new_version, $file_display_name, $file_description, $file_categories, $file_offline ) {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( 'Unauthorized access' );
+		}
 
 		$existing_file = $this->wpdb->get_row( $this->wpdb->prepare( "SELECT * FROM $this->file_table_name WHERE id = %d", $file_id ), ARRAY_A );
 
@@ -460,19 +463,36 @@ class FVM_File_Manager {
 	}
 
 	/**
+	 * Public interface for file deletion that enforces specific contexts
+	 * 
+	 * @param int $file_id
+	 * @param string $context The context of deletion (e.g., 'bulk', 'single', 'admin')
+	 * @return bool
+	 */
+	public function handleFileDeletion( $file_id, $context = 'single' ) {
+		// Verify context is valid
+		if ( ! in_array( $context, [ 'bulk', 'single', 'admin' ] ) ) {
+			return false;
+		}
+
+		return $this->deleteFile( $file_id, $context );
+	}
+
+	/**
 	 * Delete a file
 	 * 
 	 * @param int $file_id
+	 * @param string $context
 	 * @return bool
 	 */
-	public function delete_file( $file_id, $bulk_action = false ) {
+	private function deleteFile( $file_id, $context ) {
 		// Verify user capabilities
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( 'Unauthorized access' );
 		}
 
 		// Different nonce verification for bulk vs single deletion
-		if ( ! $bulk_action && isset( $_REQUEST['_wpnonce'] ) ) {
+		if ( $context === 'single' && isset( $_REQUEST['_wpnonce'] ) ) {
 			check_admin_referer( 'delete_file_' . $file_id );
 		}
 
@@ -526,7 +546,7 @@ class FVM_File_Manager {
 					'file_name' => $file->file_name,
 					'file_size' => $file->file_size,
 					'file_type' => $file->file_type,
-					'bulk_action' => $bulk_action,
+					'bulk_action' => $context,
 				],
 				'info'
 			);

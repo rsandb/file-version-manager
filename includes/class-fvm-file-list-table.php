@@ -251,7 +251,10 @@ class FVM_File_List_Table extends \WP_List_Table {
 	private function get_file_icon_class( $file_type ) {
 		$icon_map = [ 
 			'jpg' => 'dashicons-format-image',
+			'jpeg' => 'dashicons-format-image',
 			'png' => 'dashicons-format-image',
+			'tiff' => 'dashicons-format-image',
+			'avif' => 'dashicons-format-image',
 			'webp' => 'dashicons-format-image',
 			'svg' => 'dashicons-format-image',
 			'gif' => 'dashicons-format-image',
@@ -262,8 +265,21 @@ class FVM_File_List_Table extends \WP_List_Table {
 			'doc' => 'dashicons-media-document',
 			'docx' => 'dashicons-media-document',
 			'xls' => 'dashicons-media-spreadsheet',
+			'xlsm' => 'dashicons-media-spreadsheet',
 			'xlsx' => 'dashicons-media-spreadsheet',
+			'csv' => 'dashicons-media-spreadsheet',
 			'zip' => 'dashicons-media-archive',
+			'html' => 'dashicons-media-code',
+			'css' => 'dashicons-media-code',
+			'js' => 'dashicons-media-code',
+			'php' => 'dashicons-media-code',
+			'sql' => 'dashicons-media-code',
+			'json' => 'dashicons-media-code',
+			'xml' => 'dashicons-media-code',
+			'yaml' => 'dashicons-media-code',
+			'yml' => 'dashicons-media-code',
+			'txt' => 'dashicons-media-text',
+			'md' => 'dashicons-media-text',
 		];
 
 		$type_parts = explode( '/', $file_type );

@@ -618,30 +618,14 @@ class FVM_File_Page {
 	 */
 	public function handle_file_deletion() {
 		if ( isset( $_GET['action'] ) && $_GET['action'] === 'delete' && isset( $_GET['file_id'] ) ) {
-			error_log( 'Entering handle_file_deletion method' );
+			$file_id = intval( $_GET['file_id'] );
+			$delete_result = $this->file_manager->handleFileDeletion( $file_id, 'single' );
 
-			if ( isset( $_GET['action'] ) && $_GET['action'] === 'delete' && isset( $_GET['file_id'] ) ) {
-				error_log( 'Delete action detected for file ID: ' . $_GET['file_id'] );
-
-				check_admin_referer( 'delete_file_' . $_GET['file_id'] );
-				error_log( 'Nonce verified successfully' );
-
-				$file_id = intval( $_GET['file_id'] );
-				$delete_result = $this->file_manager->delete_file( $file_id );
-
-				error_log( "Delete result for file ID $file_id: " . ( $delete_result ? 'success' : 'failure' ) );
-
-				if ( $delete_result ) {
-					fvm_redirect_with_message( 'fvm_files', 'success', 'File deleted successfully.' );
-				} else {
-					fvm_redirect_with_message( 'fvm_files', 'error', 'Error deleting file.' );
-				}
-
+			if ( $delete_result ) {
+				fvm_redirect_with_message( 'fvm_files', 'success', 'File deleted successfully.' );
 			} else {
-				error_log( 'No delete action detected in handle_file_deletion' );
+				fvm_redirect_with_message( 'fvm_files', 'error', 'Error deleting file.' );
 			}
-
-			error_log( 'Exiting handle_file_deletion method' );
 		}
 	}
 
@@ -708,7 +692,7 @@ class FVM_File_Page {
 				$deleted_count = 0;
 				foreach ( $file_ids as $file_id ) {
 					// Pass true to indicate this is a bulk action
-					if ( $this->file_manager->delete_file( $file_id, true ) ) {
+					if ( $this->file_manager->handleFileDeletion( $file_id, 'bulk' ) ) {
 						$deleted_count++;
 					}
 				}
