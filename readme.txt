@@ -1,9 +1,8 @@
 === File Version Manager ===
-Contributors: rileysandborg
-Donate link: https://example.com/
+Contributors: @rsandb, @codelyfe
 Tags: version, file, manager, version manager
 Requires at least: 6.6
-Tested up to: 6.6
+Tested up to: 6.7.1
 Stable tag: trunk
 Requires PHP: 7.4
 License: GPLv2 or later
@@ -19,7 +18,7 @@ File Version Manager is a slimmed version of WP Filebase Pro. File Version Manag
 
 = Do you have a question? =
 
-Reach out to me at riley@sandb.org
+If you have a question or concern, please submit an issue on the GitHub repository.
 
 == Screenshots ==
 
