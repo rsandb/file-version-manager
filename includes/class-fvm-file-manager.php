@@ -2,8 +2,6 @@
 
 namespace FVM\FileVersionManager;
 
-#todo: add user id to file data when uploading and editing a file
-
 class FVM_File_Manager {
 	private $upload_dir;
 	private $custom_folder;
