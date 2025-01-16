@@ -28,6 +28,9 @@ Reach out to me at riley@sandb.org
 
 == Changelog ==
 
+= 0.13.5 =
+* Added more icons for file formats
+
 = 0.13.4 =
 * Updated file manager class
 
