@@ -336,8 +336,9 @@ class FVM_Category_Page {
 
 		$result = $this->category_manager->add_category( $cat_name, $cat_slug, $cat_parent_id, $cat_description );
 
-		if ( $result === false ) {
-			fvm_redirect_with_message( 'fvm_categories', 'error', 'Failed to add category.' );
+		if ( ! $result['success'] ) {
+			$error_message = isset( $result['message'] ) ? $result['message'] : 'Failed to add category.';
+			fvm_redirect_with_message( 'fvm_categories', 'error', $error_message );
 		} else {
 			fvm_redirect_with_message( 'fvm_categories', 'success', 'Category added successfully.' );
 		}
@@ -391,9 +392,9 @@ class FVM_Category_Page {
 	}
 
 	public function handle_bulk_actions() {
-		// if ( ! current_user_can( 'manage_options' ) ) {
-		// 	wp_die( 'You do not have sufficient permissions to access this page.' );
-		// }
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( 'You do not have sufficient permissions to access this page.' );
+		}
 
 		$this->setup_list_table();
 

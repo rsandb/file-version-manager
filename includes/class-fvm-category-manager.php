@@ -16,21 +16,69 @@ class FVM_Category_Manager {
 
 	/**
 	 * Adds a new category to the database.
-	 *
+	 * 
 	 * @param string $cat_name The name of the category.
 	 * @param string $cat_slug Optional. The slug of the category.
 	 * @param int $cat_parent_id Optional. The parent ID of the category.
 	 * @param string $cat_description Optional. The description of the category.
-	 * @return bool|int Returns true on success, false on failure.
+	 * @return array Returns an array with 'success' and 'message' keys.
 	 */
 	public function add_category( $cat_name, $cat_slug = '', $cat_parent_id = 0, $cat_description = '' ) {
 		$cat_slug = empty( $cat_slug ) ? sanitize_title( $cat_name ) : $cat_slug;
 
-		return $this->wpdb->insert(
+		// Check if category with same slug already exists
+		$existing_category = $this->wpdb->get_var(
+			$this->wpdb->prepare(
+				"SELECT id FROM {$this->category_table_name} WHERE cat_slug = %s",
+				$cat_slug
+			)
+		);
+
+		if ( $existing_category ) {
+			return [ 'success' => false, 'message' => sprintf( 'A category with the slug %s already exists.', $cat_slug ) ];
+		}
+
+		// Check if parent category exists if specified
+		if ( $cat_parent_id > 0 ) {
+			$parent_exists = $this->wpdb->get_var(
+				$this->wpdb->prepare(
+					"SELECT id FROM {$this->category_table_name} WHERE id = %d",
+					$cat_parent_id
+				)
+			);
+
+			if ( ! $parent_exists ) {
+				return [ 'success' => false, 'message' => 'The specified parent category does not exist.' ];
+			}
+		}
+
+		$result = $this->wpdb->insert(
 			$this->category_table_name,
 			compact( 'cat_name', 'cat_slug', 'cat_parent_id', 'cat_description' ),
 			[ '%s', '%s', '%d', '%s' ]
 		);
+
+		if ( $result ) {
+			$category_id = $this->wpdb->insert_id;
+
+			// Log the category creation
+			apply_filters(
+				'simple_history_log',
+				'Added new category (ID: {category_id}): {category_name}',
+				[ 
+					'category_id' => $category_id,
+					'category_name' => $cat_name,
+					'category_slug' => $cat_slug,
+					'category_parent_id' => $cat_parent_id,
+				],
+				'info'
+			);
+
+			return [ 'success' => true ];
+		}
+
+		// Database insertion failed
+		return [ 'success' => false, 'message' => 'Unable to create category.' ];
 	}
 
 	/**
@@ -76,11 +124,38 @@ class FVM_Category_Manager {
 	 * @return bool|int Returns true on success, false on failure.
 	 */
 	public function delete_category( $category_id ) {
-		return $this->wpdb->delete(
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return false;
+		}
+
+		// Get category info before deletion for logging
+		$category = $this->get_category( $category_id );
+		if ( ! $category ) {
+			return false;
+		}
+
+		$deleted = $this->wpdb->delete(
 			$this->category_table_name,
 			[ 'id' => $category_id ],
 			[ '%d' ]
 		);
+
+		if ( $deleted ) {
+			// Log the deletion
+			apply_filters(
+				'simple_history_log',
+				'Deleted file category (ID: {category_id}): {category_name}',
+				[ 
+					'category_id' => $category_id,
+					'category_name' => $category->cat_name,
+				],
+				'info'
+			);
+
+			return true;
+		}
+
+		return false;
 	}
 
 	/**
@@ -202,6 +277,17 @@ class FVM_Category_Manager {
 	}
 
 	public function get_category_data( $category_id ) {
+
+		// Verify user
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return false;
+		}
+
+		// Verify nonce
+		if ( ! isset( $_REQUEST['_ajax_nonce'] ) || ! wp_verify_nonce( $_REQUEST['_ajax_nonce'], 'get_category_data' ) ) {
+			return false;
+		}
+
 		$category = $this->get_category( $category_id );
 		if ( ! $category ) {
 			return false;

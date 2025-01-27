@@ -77,6 +77,29 @@ class FVM_File_Manager {
 
 		$this->batch_insert_files( $to_insert );
 		$this->batch_delete_files( array_keys( $to_delete ) );
+
+		// Log the scan results
+		if ( count( $to_insert ) > 0 || count( $to_delete ) > 0 ) {
+			$scan_summary = [];
+			if ( count( $to_insert ) > 0 ) {
+				$scan_summary[] = sprintf( '%d new files found', count( $to_insert ) );
+			}
+			if ( count( $to_delete ) > 0 ) {
+				$scan_summary[] = sprintf( '%d files removed', count( $to_delete ) );
+			}
+
+			apply_filters(
+				'simple_history_log',
+				'File scan results: ' . implode( ', ', $scan_summary ),
+				[ 
+					'files_found' => count( $existing_files ),
+					'files_added' => count( $to_insert ),
+					'files_removed' => count( $to_delete ),
+					'scan_directory' => $this->upload_dir,
+				],
+				'info'
+			);
+		}
 	}
 
 	private function batch_insert_files( $file_paths ) {
@@ -562,6 +585,16 @@ class FVM_File_Manager {
 	 * @return array|false
 	 */
 	public function get_file_data( $file_id ) {
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return false;
+		}
+
+		// Verify nonce
+		if ( ! isset( $_REQUEST['_ajax_nonce'] ) || ! wp_verify_nonce( $_REQUEST['_ajax_nonce'], 'get_file_data' ) ) {
+			return false;
+		}
+
 		$file = $this->get_file( $file_id );
 		if ( ! $file ) {
 			return false;
