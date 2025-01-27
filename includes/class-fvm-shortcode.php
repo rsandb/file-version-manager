@@ -323,6 +323,8 @@ class FVM_Shortcode {
 		$category_id = intval( $atts['id'] );
 		$title = isset( $atts['title'] ) ? sanitize_text_field( $atts['title'] ) : '';
 		$max_depth = isset( $atts['max_depth'] ) ? intval( $atts['max_depth'] ) : 5;
+		$show_version = isset( $atts['show_version'] ) ? filter_var( $atts['show_version'], FILTER_VALIDATE_BOOLEAN ) : true;
+		$show_description = isset( $atts['show_description'] ) ? filter_var( $atts['show_description'], FILTER_VALIDATE_BOOLEAN ) : true;
 
 		if ( $category_id === 0 ) {
 			return '<p>Invalid category ID.</p>';
@@ -341,7 +343,7 @@ class FVM_Shortcode {
 			<h2 class="fvm-toggle-title"><?php echo esc_html( $title ); ?></h2>
 		<?php endif; ?>
 		<ul id="fvm-toggle-<?php echo esc_attr( $category_id ); ?>" class="fvm-toggle-container">
-			<?php echo $this->render_category_toggle( $categories, $direct_files, 0, $category_id ); ?>
+			<?php echo $this->render_category_toggle( $categories, $direct_files, 0, $category_id, $show_version, $show_description ); ?>
 		</ul>
 
 		<script>
@@ -378,7 +380,8 @@ class FVM_Shortcode {
 			JOIN category_tree ct ON c.cat_parent_id = ct.id
 			WHERE ct.level < %d
 		)
-		SELECT ct.*, f.id AS file_id, f.file_name, f.file_display_name, f.file_url, f.file_size, f.file_type
+		SELECT ct.*, f.id AS file_id, f.file_name, f.file_display_name, f.file_url, f.file_size, 
+			   f.file_type, f.file_version, f.file_description
 		FROM category_tree ct
 		LEFT JOIN {$this->rel_table_name} r ON ct.id = r.category_id
 		LEFT JOIN {$this->file_table_name} f ON r.file_id = f.id AND f.file_offline != 1
@@ -399,7 +402,7 @@ class FVM_Shortcode {
 		", $category_id ) );
 	}
 
-	private function render_category_toggle( $categories, $direct_files, $level = 0, $parent_id = 0 ) {
+	private function render_category_toggle( $categories, $direct_files, $level = 0, $parent_id = 0, $show_version = false, $show_description = false ) {
 		$output = '';
 		$rendered_categories = [];
 
@@ -407,29 +410,29 @@ class FVM_Shortcode {
 			if ( $category->cat_parent_id == $parent_id && ! in_array( $category->id, $rendered_categories ) ) {
 				$rendered_categories[] = $category->id;
 				if ( $category->cat_exclude_browser != 1 ) {
-					$output .= $this->render_category( $category, $categories, $level );
+					$output .= $this->render_category( $category, $categories, $level, $show_version, $show_description );
 				}
 			}
 		}
 
 		if ( $level == 0 ) {
 			foreach ( $direct_files as $file ) {
-				$output .= $this->render_file_item( $file, $level );
+				$output .= $this->render_file_item( $file, $level, $show_version, $show_description );
 			}
 		}
 
 		return $output;
 	}
 
-	private function render_category( $category, $all_categories, $level ) {
-		$subcategories = $this->render_category_toggle( $all_categories, [], $level + 1, $category->id );
+	private function render_category( $category, $all_categories, $level, $show_version = false, $show_description = false ) {
+		$subcategories = $this->render_category_toggle( $all_categories, [], $level + 1, $category->id, $show_version, $show_description );
 		$category_files = array_filter( $all_categories, function ($item) use ($category) {
 			return $item->id == $category->id && $item->file_id;
 		} );
 
 		$files_output = '';
 		foreach ( $category_files as $file ) {
-			$files_output .= $this->render_file_item( $file, $level + 1 );
+			$files_output .= $this->render_file_item( $file, $level + 1, $show_version, $show_description );
 		}
 
 		$icons = '<div class="fvm-toggle-icon-wrapper">' .
@@ -461,15 +464,15 @@ class FVM_Shortcode {
 		);
 	}
 
-	private function render_file_item( $file, $level ) {
+	private function render_file_item( $file, $level, $show_version = false, $show_description = false ) {
 		$file_name = ! empty( $file->file_display_name ) ? $file->file_display_name : $file->file_name;
-		return sprintf(
+
+		$output = sprintf(
 			'<li id="fvm-file-%1$d" class="fvm-toggle-file" data-level="%2$d">
 				<span>
 					<a href="%3$s" title="%4$s" target="_blank" rel="noopener noreferrer">%4$s</a>
 					<span class="fvm-file-item-meta">
-						%5$s
-						<span>(%6$s)</span>
+						%5$s (%6$s)
 					</span>
 				</span>
 			</li>',
@@ -478,7 +481,10 @@ class FVM_Shortcode {
 			esc_url( add_query_arg( 'file', $file->file_name, home_url() ) ),
 			esc_html( $file_name ),
 			$file->file_type ? '<span>' . esc_html( $file->file_type ) . '</span>' : '',
-			esc_html( size_format( $file->file_size ) )
+			esc_html( size_format( $file->file_size ) ),
 		);
+
+		return apply_filters( 'fvm_render_file_item', $output, $file, $level, $show_version, $show_description );
 	}
 }
+

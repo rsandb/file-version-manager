@@ -27,6 +27,9 @@ If you have a question or concern, please submit an issue on the GitHub reposito
 
 == Changelog ==
 
+= 0.14.1 =
+* Added filter support for the file item render
+
 = 0.14.0 =
 * Updated Plugin Update Checker to 5.5
 * Added Simple History logging support for category adds, deletions, and updates

@@ -90,7 +90,7 @@ class FVM_File_Manager {
 
 			apply_filters(
 				'simple_history_log',
-				'File scan results: ' . implode( ', ', $scan_summary ),
+				'File scan completed: ' . implode( ', ', $scan_summary ),
 				[ 
 					'files_found' => count( $existing_files ),
 					'files_added' => count( $to_insert ),
