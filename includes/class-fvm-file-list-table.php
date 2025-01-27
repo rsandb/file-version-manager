@@ -85,9 +85,10 @@ class FVM_File_List_Table extends \WP_List_Table {
 		$search_query = '';
 		if ( ! empty( $search ) ) {
 			$search_query = $this->wpdb->prepare(
-				"WHERE file_name LIKE %s OR file_display_name LIKE %s",
+				"WHERE file_name LIKE %s OR file_display_name LIKE %s OR CAST(f.id AS CHAR) = %s",
 				'%' . $this->wpdb->esc_like( $search ) . '%',
-				'%' . $this->wpdb->esc_like( $search ) . '%'
+				'%' . $this->wpdb->esc_like( $search ) . '%',
+				$search
 			);
 		}
 
@@ -103,11 +104,6 @@ class FVM_File_List_Table extends \WP_List_Table {
 
 		$results = $this->wpdb->get_results( $query, ARRAY_A );
 
-		// Debug: Check if we're getting results
-		if ( empty( $results ) ) {
-			error_log( "No results found in get_files method. Query: " . $this->wpdb->last_query );
-		}
-
 		return $results;
 	}
 
@@ -121,9 +117,10 @@ class FVM_File_List_Table extends \WP_List_Table {
 		$search_query = '';
 		if ( ! empty( $search ) ) {
 			$search_query = $this->wpdb->prepare(
-				"WHERE file_name LIKE %s OR file_display_name LIKE %s",
+				"WHERE file_name LIKE %s OR file_display_name LIKE %s OR CAST(f.id AS CHAR) = %s",
 				'%' . $this->wpdb->esc_like( $search ) . '%',
-				'%' . $this->wpdb->esc_like( $search ) . '%'
+				'%' . $this->wpdb->esc_like( $search ) . '%',
+				$search
 			);
 		}
 
