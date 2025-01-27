@@ -27,6 +27,9 @@ If you have a question or concern, please submit an issue on the GitHub reposito
 
 == Changelog ==
 
+= 0.14.2 =
+* Added searching by id for files
+
 = 0.14.1 =
 * Added filter support for the file item render
 
